@@ -286,6 +286,11 @@ const clip=new THREE.Plane(new THREE.Vector3(0,0,-1),0);
 const kilnSector=new THREE.Group(); scene.add(kilnSector);
 // setor de alimentação: caixão alimentador + esteira segmentada + esteira de borracha inclinada
 const feedSector=new THREE.Group(); scene.add(feedSector);
+// setor do resfriador: 2º forno rotativo (menor, mais curto, 2 bases) em trincheira inferior + calha de queda
+const coolerSector=new THREE.Group(); scene.add(coolerSector);
+const coolerTilt=new THREE.Group(); coolerSector.add(coolerTilt);
+const KC={ spin:null, rollers:[] };
+let coolerGroup=null, chuteGroup=null;
 
 /* ===================================================================
    4. CONSTRUÇÃO
@@ -592,6 +597,102 @@ function buildAll(){
   for(let i=0;i<10;i++){ const m=new THREE.Mesh(trGeo,trMat); m.visible=false; stat.add(m); K.tracers.push({mesh:m,active:false,t:0,lead:i===0}); }
 
   applyToggles();
+  buildCooler();
+}
+
+/* ---- RESFRIADOR: 2º forno rotativo (menor·mais curto·2 bases) em trincheira inferior ---- */
+function buildCooler(){
+  while(coolerTilt.children.length){ disp(coolerTilt.children.pop()); }
+  KC.rollers.length=0;
+  const L=P.L, R=P.D/2;
+  const cL=Math.max(8,L*0.52), cR=Math.max(0.55,R*0.62), cRin=cR*0.9;
+  const tyreOR=cR*1.32, tyreW=cR*0.5, rollerR=cR*0.42, rollerL=cR*0.72;
+  const offA=30*Math.PI/180, Rc=tyreOR+rollerR, yC=-Rc*Math.cos(offA), zL=Rc*Math.sin(offA);
+  const cGroundLevel=Math.min(-1.8,(yC-rollerR*0.5)-0.3);
+  const cBaseXs=[-cL*0.32,cL*0.32];
+  const cHalfZ=zL+rollerR*1.2+1.8, cHalfX=cL/2+cR*2.0+1.8;
+
+  // posição do setor: continuidade axial do forno, em nível inferior (trincheira mais baixa)
+  const dropY=-(R+cR+1.7), offX=L/2+R*2.2+cHalfX+1.2;
+  coolerSector.position.set(offX,dropY,0);
+
+  coolerGroup=new THREE.Group(); coolerTilt.add(coolerGroup);
+  const spin=new THREE.Group(); coolerGroup.add(spin); KC.spin=spin;
+  const shellMat=matSteel(0x838b93,0.85,0.42); shellMat.clippingPlanes=[clip]; shellMat.side=THREE.DoubleSide;
+  const shell=new THREE.Mesh(new THREE.CylinderGeometry(cR,cR,cL,48,1,true),shellMat);
+  shell.rotation.z=Math.PI/2; shell.castShadow=true; shell.receiveShadow=true; spin.add(shell); K.clipMeshes.push(shell);
+  for(let i=0;i<5;i++){ const rg=new THREE.Mesh(new THREE.TorusGeometry(cR*1.004,cR*0.018,8,40),matSteel(0x767f88,0.85,0.5));
+    rg.rotation.y=Math.PI/2; rg.position.x=-cL/2+cL*(i+0.5)/5; rg.material.clippingPlanes=[clip]; spin.add(rg); K.clipMeshes.push(rg); }
+
+  cBaseXs.forEach((bx,i)=>{
+    const tyre=new THREE.Mesh(new THREE.CylinderGeometry(tyreOR,tyreOR,tyreW,40,1),matSteel(0xa6aeb6,0.95,0.28));
+    tyre.rotation.z=Math.PI/2; tyre.position.x=bx; tyre.castShadow=true; spin.add(tyre);
+    addLabel('Resfriador · base '+(i+1),bx+offX,cR*2.1+dropY,0,'rgba(84,200,232,0.9)');
+  });
+
+  const struct=new THREE.Group(); coolerGroup.add(struct); struct.visible=P.showStruct;
+  const matFound=new THREE.MeshStandardMaterial({color:0x262d34,roughness:0.96,metalness:0.04});
+  cBaseXs.forEach(bx=>{
+    const ph=(yC-rollerR*0.5)-cGroundLevel;
+    const pier=new THREE.Mesh(new THREE.BoxGeometry(rollerL*2.4,ph,zL*2+rollerR*2.4),matFound);
+    pier.position.set(bx,cGroundLevel+ph/2,0); pier.castShadow=true; pier.receiveShadow=true; struct.add(pier);
+    [zL,-zL].forEach(zr=>{
+      const rgrp=new THREE.Group(); rgrp.position.set(bx,yC,zr); struct.add(rgrp); KC.rollers.push(rgrp);
+      const rgeo=new THREE.CylinderGeometry(rollerR,rollerR,rollerL,28,1); rgeo.rotateZ(Math.PI/2);
+      const roller=new THREE.Mesh(rgeo,matSteel(0x6b737c,0.88,0.34)); roller.castShadow=true; rgrp.add(roller);
+      const sgeo=new THREE.CylinderGeometry(rollerR*0.3,rollerR*0.3,rollerL+cR*0.5,16); sgeo.rotateZ(Math.PI/2);
+      rgrp.add(new THREE.Mesh(sgeo,matSteel(0x596169,0.85,0.4)));
+      [rollerL/2+cR*0.16,-(rollerL/2+cR*0.16)].forEach(dx=>{
+        const base=new THREE.Mesh(new THREE.BoxGeometry(cR*0.2,rollerR*1.7,rollerR*1.5),matCast(0x39404a,0.5,0.6));
+        base.position.set(bx+dx,yC-rollerR*0.1,zr); base.castShadow=true; struct.add(base);
+      });
+    });
+  });
+  // acionamento simples: motorredutor numa das bases
+  const mX=cBaseXs[1]+cR*1.1;
+  const mot=new THREE.Mesh(new THREE.BoxGeometry(cR*0.9,cR*0.5,cR*0.5),matCast(0x2f363d,0.5,0.6));
+  mot.position.set(mX,yC-rollerR-cR*0.3,0); coolerGroup.add(mot);
+  addLabel('Motorredutor',mX+offX,yC-rollerR-cR*0.3+cR*0.5+dropY,0,'rgba(255,255,255,0.55)');
+
+  // piso fabril + trincheira inferior do resfriador (guarda-corpo NR12 + escada)
+  const BIG=120;
+  const cGroundFrame=new THREE.Group(); coolerSector.add(cGroundFrame);
+  const stripNS=(zc,zh)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(BIG*2,zh),matFloor);
+    m.rotation.x=-Math.PI/2; m.position.set(0,0,zc); m.receiveShadow=true; cGroundFrame.add(m);};
+  const stripEW=(xc,xh)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(xh,cHalfZ*2),matFloor);
+    m.rotation.x=-Math.PI/2; m.position.set(xc,0,0); m.receiveShadow=true; cGroundFrame.add(m);};
+  stripNS( cHalfZ+(BIG-cHalfZ)/2, BIG-cHalfZ); stripNS(-(cHalfZ+(BIG-cHalfZ)/2), BIG-cHalfZ);
+  stripEW( cHalfX+(BIG-cHalfX)/2, BIG-cHalfX); stripEW(-(cHalfX+(BIG-cHalfX)/2), BIG-cHalfX);
+
+  const cTrench=new THREE.Group(); coolerSector.add(cTrench);
+  const pitFloor=new THREE.Mesh(new THREE.PlaneGeometry(cHalfX*2,cHalfZ*2),matConcrete);
+  pitFloor.rotation.x=-Math.PI/2; pitFloor.position.y=cGroundLevel; pitFloor.receiveShadow=true; cTrench.add(pitFloor);
+  const pitH=-cGroundLevel;
+  const wallNS=new THREE.BoxGeometry(cHalfX*2+0.4,pitH,0.2);
+  [cHalfZ,-cHalfZ].forEach(zw=>{ const w=new THREE.Mesh(wallNS,matConcrete); w.position.set(0,cGroundLevel+pitH/2,zw); w.receiveShadow=true; w.castShadow=true; cTrench.add(w); });
+  const wallEW=new THREE.BoxGeometry(0.2,pitH,cHalfZ*2+0.4);
+  [cHalfX,-cHalfX].forEach(xw=>{ const w=new THREE.Mesh(wallEW,matConcrete); w.position.set(xw,cGroundLevel+pitH/2,0); w.receiveShadow=true; w.castShadow=true; cTrench.add(w); });
+  const stairX2=-cHalfX*0.4, stairGap2=0.8;
+  buildGuardrail(cTrench,[[-cHalfX,cHalfZ],[stairX2-stairGap2,cHalfZ]],0);
+  buildGuardrail(cTrench,[[stairX2+stairGap2,cHalfZ],[cHalfX,cHalfZ]],0);
+  buildGuardrail(cTrench,[[cHalfX,cHalfZ],[cHalfX,-cHalfZ]],0);
+  buildGuardrail(cTrench,[[cHalfX,-cHalfZ],[-cHalfX,-cHalfZ]],0);
+  buildGuardrail(cTrench,[[-cHalfX,-cHalfZ],[-cHalfX,cHalfZ]],0);
+  buildStairs(cTrench,stairX2,cHalfZ,1,pitH);
+  addLabel('Resfriador · trincheira inferior',offX,RAIL_H+0.3+dropY,cHalfZ+0.6,'rgba(245,197,33,0.95)');
+
+  // calha de queda: descarga do forno principal -> entrada do resfriador (fixa, não tilta)
+  if(chuteGroup){disp(chuteGroup);scene.remove(chuteGroup);}
+  chuteGroup=new THREE.Group(); scene.add(chuteGroup);
+  const fromP=new THREE.Vector3(L/2+R*1.2,0,0);
+  const toP=new THREE.Vector3(offX-cL/2-cR*1.1,dropY+cR*0.6,0);
+  const midP=fromP.clone().lerp(toP,0.5);
+  const dir=toP.clone().sub(fromP), chuteLen=dir.length();
+  const chute=new THREE.Mesh(new THREE.CylinderGeometry(R*0.32,R*0.32,chuteLen,16,1,true),matSteel(0x6b737c,0.78,0.5));
+  chute.position.copy(midP);
+  chute.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());
+  chuteGroup.add(chute);
+  addLabel('Calha de transferência',midP.x,midP.y+1.0,midP.z,'rgba(255,255,255,0.55)');
 }
 
 function colorBed(){
@@ -706,6 +807,9 @@ function animate(now){
     if(K.spin)K.spin.rotation.x=spinA;
     K.rollers.forEach(r=>{r.rotation.x=-spinA*(tyreOR/rollerR);});
     if(K.pinion)K.pinion.rotation.x=-spinA*4.5;
+    const cTyreOR=Math.max(0.55,P.D/2*0.62)*1.32, cRollerR=Math.max(0.55,P.D/2*0.62)*0.42;
+    if(KC.spin)KC.spin.rotation.x=spinA*0.9;
+    KC.rollers.forEach(r=>{r.rotation.x=-spinA*0.9*(cTyreOR/cRollerR);});
   }
   fanA+=dt*(0.4+P.draft/100*8); if(K.fan)K.fan.rotation.z=fanA;
 
@@ -741,6 +845,7 @@ function animate(now){
     if(tr.t<0){tr.mesh.visible=false;return;}tr.mesh.visible=true;tr.mesh.position.set(-half+tr.t*P.L,-Rin*0.55,0);});
 
   tilt.rotation.z=-P.incline*Math.PI/180;
+  coolerTilt.rotation.z=-P.incline*Math.PI/180;
   camUpdate(); renderer.render(scene,camera); requestAnimationFrame(animate);
 }
 
