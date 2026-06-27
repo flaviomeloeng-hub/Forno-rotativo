@@ -284,6 +284,8 @@ const clip=new THREE.Plane(new THREE.Vector3(0,0,-1),0);
 
 // setor do forno: piso fabril + trincheira + guarda-corpos + escada + grupo girante (tilt) — visibilidade isolável
 const kilnSector=new THREE.Group(); scene.add(kilnSector);
+// setor de alimentação: caixão alimentador + esteira segmentada + esteira de borracha inclinada
+const feedSector=new THREE.Group(); scene.add(feedSector);
 
 /* ===================================================================
    4. CONSTRUÇÃO
@@ -296,7 +298,7 @@ let R=1.2, Rin=0.9, baseXs=[], groundLevel=-3;
 // Trincheira do forno: profundidade indicativa ~2,3 m (aprofunda automaticamente p/ liberar roletes maiores),
 // folga lateral/longitudinal ~2,3 m das estruturas; guarda-corpo NR12 a 1,10 m + travessão intermediário a 0,55 m.
 const TRENCH_DEPTH_NOM=2.3, TRENCH_CLEAR=2.3, RAIL_H=1.10, RAIL_MID=0.55, RAIL_YELLOW=0xf5c521;
-let groundFrame=null, trenchGroup=null;
+let groundFrame=null, trenchGroup=null, feedGroup=null;
 const matConcrete=new THREE.MeshStandardMaterial({color:0x2a2f35,roughness:0.95,metalness:0.02});
 const matFloor=new THREE.MeshStandardMaterial({color:0x12171d,roughness:0.97,metalness:0.0});
 const matYellow=new THREE.MeshStandardMaterial({color:RAIL_YELLOW,roughness:0.55,metalness:0.25,emissive:0x3a2c00,emissiveIntensity:0.15});
@@ -478,6 +480,65 @@ function buildAll(){
   buildGuardrail(trenchGroup,[[-trenchHalfX,-trenchHalfZ],[-trenchHalfX,trenchHalfZ]],0);
   buildStairs(trenchGroup,stairX,stairZ,1,pitH);
   addLabel('Trincheira do forno · acesso p/ manutenção',0,RAIL_H+0.3,trenchHalfZ+0.6,'rgba(245,197,33,0.95)');
+
+  /* ---- ALIMENTAÇÃO: caixão alimentador → esteira segmentada → esteira de borracha inclinada (NR12) ---- */
+  if(feedGroup){disp(feedGroup);feedSector.remove(feedGroup);}
+  feedGroup=new THREE.Group(); feedSector.add(feedGroup);
+  const matRubber=new THREE.MeshStandardMaterial({color:0x16171a,roughness:0.92,metalness:0.08});
+  const feedHeadX=-L/2-R*1.8, feedHeadY=R*1.55, beltW=0.8, inclA=20*Math.PI/180;
+  const tailY=0.35, rise=feedHeadY-tailY, beltLen=rise/Math.sin(inclA), beltSpanX=rise/Math.tan(inclA);
+  const tailX=feedHeadX-beltSpanX, beltMidX=(feedHeadX+tailX)/2, beltMidY=(feedHeadY+tailY)/2;
+  const beltGroup=new THREE.Group(); beltGroup.position.set(beltMidX,beltMidY,0); beltGroup.rotation.z=inclA; feedGroup.add(beltGroup);
+  const beltPan=new THREE.Mesh(new THREE.BoxGeometry(beltLen,0.05,beltW),matRubber);
+  beltPan.castShadow=true; beltPan.receiveShadow=true; beltGroup.add(beltPan);
+  const beltFrame=new THREE.Mesh(new THREE.BoxGeometry(beltLen*0.98,0.16,beltW*1.18),matSteel(0x4b525a,0.7,0.55));
+  beltFrame.position.y=-0.13; beltGroup.add(beltFrame);
+  const drumR=beltW*0.22;
+  [-beltLen/2,beltLen/2].forEach(dx=>{
+    const drum=new THREE.Mesh(new THREE.CylinderGeometry(drumR,drumR,beltW*1.05,20),matSteel(0x8b949d,0.85,0.3));
+    drum.rotation.x=Math.PI/2; drum.position.set(dx,-0.05,0); beltGroup.add(drum);
+    const guard=new THREE.Mesh(new THREE.CylinderGeometry(drumR*1.65,drumR*1.65,beltW*1.32,16,1,true,0,Math.PI*1.2),matYellow.clone());
+    guard.material.side=THREE.DoubleSide; guard.rotation.x=Math.PI/2; guard.rotation.z=dx<0?Math.PI*0.15:Math.PI*1.1; guard.position.set(dx,-0.05,0); beltGroup.add(guard);
+  });
+  const nIdle=Math.max(3,Math.round(beltLen/2.2));
+  for(let i=1;i<nIdle;i++){ const ix=-beltLen/2+beltLen*i/nIdle;
+    const idl=new THREE.Mesh(new THREE.CylinderGeometry(drumR*0.55,drumR*0.55,beltW*1.02,12),matSteel(0x6b737c,0.8,0.4));
+    idl.rotation.x=Math.PI/2; idl.position.set(ix,0.02,0); beltGroup.add(idl); }
+  [beltW/2+0.06,-beltW/2-0.06].forEach(zs=>{
+    const guardPanel=new THREE.Mesh(new THREE.BoxGeometry(beltLen*0.92,0.32,0.025),matYellow);
+    guardPanel.position.set(0,0.12,zs); beltGroup.add(guardPanel); });
+  const nSupp=Math.max(3,Math.round(beltLen/3.5));
+  for(let i=0;i<=nSupp;i++){ const tt=i/nSupp, lx=lerp(tailX,feedHeadX,tt), ly=lerp(tailY,feedHeadY,tt), legH=ly-0.05;
+    if(legH<0.2)continue;
+    const leg=new THREE.Mesh(new THREE.BoxGeometry(0.14,legH,beltW*1.3),matSteel(0x4b525a,0.6,0.6));
+    leg.position.set(lx,legH/2-0.02,0); feedGroup.add(leg); }
+  addLabel('Esteira de borracha inclinada (800 mm)',beltMidX,beltMidY+0.6,beltW*1.4,'rgba(245,197,33,0.95)');
+
+  const apronLen=3.2, apronW=beltW*1.15, apronY=tailY-0.05, apronX=tailX-apronLen/2-0.4;
+  const apronGroup=new THREE.Group(); apronGroup.position.set(apronX,apronY,0); feedGroup.add(apronGroup);
+  const apronBody=new THREE.Mesh(new THREE.BoxGeometry(apronLen,0.22,apronW),matIron(0x4a525a,0.55,0.6)); apronGroup.add(apronBody);
+  const nSlat=14;
+  for(let i=0;i<nSlat;i++){ const sx=-apronLen/2+apronLen*(i+0.5)/nSlat;
+    const slat=new THREE.Mesh(new THREE.BoxGeometry(apronLen/nSlat*0.85,0.05,apronW*1.04),matSteel(0x6b737c,0.8,0.4));
+    slat.position.set(sx,0.13,0); apronGroup.add(slat); }
+  [apronLen/2,-apronLen/2].forEach(dx=>{ const dr=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,apronW*1.1,16),matSteel(0x8b949d,0.85,0.3));
+    dr.rotation.x=Math.PI/2; dr.position.set(dx,0.08,0); apronGroup.add(dr); });
+  for(let i=0;i<4;i++){ const legX=-apronLen/2+apronLen*i/3;
+    const leg=new THREE.Mesh(new THREE.BoxGeometry(0.12,apronY+0.1,0.12),matSteel(0x4b525a,0.6,0.6));
+    leg.position.set(legX,-(apronY+0.1)/2,apronW*0.45*(i%2===0?1:-1)); apronGroup.add(leg); }
+  addLabel('Esteira segmentada metálica',apronX,apronY+0.5,apronW*1.5,'rgba(255,255,255,0.55)');
+
+  const hopW=4.2, hopD=3.0, hopH=3.0, hopX=apronX-apronLen*0.15;
+  const hopGroup=new THREE.Group(); hopGroup.position.set(hopX,0,0); feedGroup.add(hopGroup);
+  const matHopper=matSteel(0x55606b,0.65,0.55), hopWallT=0.08;
+  [hopD/2,-hopD/2].forEach(dz=>{ const w=new THREE.Mesh(new THREE.BoxGeometry(hopW,hopH,hopWallT),matHopper); w.position.set(0,hopH/2+0.4,dz); hopGroup.add(w); });
+  [hopW/2,-hopW/2].forEach(dx=>{ const w=new THREE.Mesh(new THREE.BoxGeometry(hopWallT,hopH,hopD),matHopper); w.position.set(dx,hopH/2+0.4,0); hopGroup.add(w); });
+  const rim=new THREE.Mesh(new THREE.BoxGeometry(hopW+0.1,0.1,hopD+0.1),matYellow); rim.position.set(0,hopH+0.4,0); hopGroup.add(rim);
+  const funnel=new THREE.Mesh(new THREE.CylinderGeometry(Math.min(hopW,hopD)*0.46,apronW*0.5,0.7,4,1,true),matHopper);
+  funnel.rotation.y=Math.PI/4; funnel.position.set(0,0.05,0); hopGroup.add(funnel);
+  [[hopW/2-0.2,hopD/2-0.2],[hopW/2-0.2,-hopD/2+0.2],[-hopW/2+0.2,hopD/2-0.2],[-hopW/2+0.2,-hopD/2+0.2]].forEach(([lx,lz])=>{
+    const leg=new THREE.Mesh(new THREE.BoxGeometry(0.18,1.1,0.18),matSteel(0x4b525a,0.6,0.6)); leg.position.set(lx,0.55,lz); hopGroup.add(leg); });
+  addLabel('Caixão alimentador',hopX,hopH+0.9,hopD*0.7,'rgba(245,166,35,0.95)');
 
   /* ---- INTERIOR: leito de material (não gira) ---- */
   const stat=new THREE.Group(); tilt.add(stat);
