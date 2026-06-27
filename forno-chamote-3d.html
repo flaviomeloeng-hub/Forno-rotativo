@@ -275,28 +275,65 @@ key.shadow.bias=-0.0004; scene.add(key);
 const rim=new THREE.DirectionalLight(0x7fb0ff,0.5); rim.position.set(28,16,-26); scene.add(rim);
 const flameLight=new THREE.PointLight(0xff7a26,0,32,2); scene.add(flameLight);
 
-// chão + sombra de contato
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(400,400),
-  new THREE.MeshStandardMaterial({color:0x12171d,roughness:0.97,metalness:0.0}));
-ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
-const grid=new THREE.GridHelper(160,40,0x1f2b38,0x161f29); scene.add(grid);
+// sombra de contato (textura reaproveitada pelo chão fabril, trincheira e chama)
 function makeShadowTex(){ const c=document.createElement('canvas');c.width=256;c.height=256;const x=c.getContext('2d');
   const rg=x.createRadialGradient(128,128,10,128,128,128);rg.addColorStop(0,'rgba(0,0,0,0.55)');rg.addColorStop(1,'rgba(0,0,0,0)');
   x.fillStyle=rg;x.fillRect(0,0,256,256);return new THREE.CanvasTexture(c);}
-const contact=new THREE.Mesh(new THREE.PlaneGeometry(1,1),
-  new THREE.MeshBasicMaterial({map:makeShadowTex(),transparent:true,depthWrite:false}));
-contact.rotation.x=-Math.PI/2; scene.add(contact);
 
 const clip=new THREE.Plane(new THREE.Vector3(0,0,-1),0);
+
+// setor do forno: piso fabril + trincheira + guarda-corpos + escada + grupo girante (tilt) — visibilidade isolável
+const kilnSector=new THREE.Group(); scene.add(kilnSector);
 
 /* ===================================================================
    4. CONSTRUÇÃO
 =================================================================== */
-const tilt=new THREE.Group(); scene.add(tilt);
+const tilt=new THREE.Group(); kilnSector.add(tilt);
 const labelGroup=new THREE.Group(); tilt.add(labelGroup);
 const K={ spin:null, bed:null, nod:null, nodData:[], flame:null, fan:null, rollers:[], pinion:null,
           tracers:[], clipMeshes:[], labels:[] };
 let R=1.2, Rin=0.9, baseXs=[], groundLevel=-3;
+// Trincheira do forno: profundidade indicativa ~2,3 m (aprofunda automaticamente p/ liberar roletes maiores),
+// folga lateral/longitudinal ~2,3 m das estruturas; guarda-corpo NR12 a 1,10 m + travessão intermediário a 0,55 m.
+const TRENCH_DEPTH_NOM=2.3, TRENCH_CLEAR=2.3, RAIL_H=1.10, RAIL_MID=0.55, RAIL_YELLOW=0xf5c521;
+let groundFrame=null, trenchGroup=null;
+const matConcrete=new THREE.MeshStandardMaterial({color:0x2a2f35,roughness:0.95,metalness:0.02});
+const matFloor=new THREE.MeshStandardMaterial({color:0x12171d,roughness:0.97,metalness:0.0});
+const matYellow=new THREE.MeshStandardMaterial({color:RAIL_YELLOW,roughness:0.55,metalness:0.25,emissive:0x3a2c00,emissiveIntensity:0.15});
+function railBetween(group,x1,z1,x2,z2,yTop,h){
+  const len=Math.hypot(x2-x1,z2-z1),ang=Math.atan2(z2-z1,x2-x1),mx=(x1+x2)/2,mz=(z1+z2)/2;
+  const rail=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.022,len,8),matYellow);
+  rail.rotation.z=Math.PI/2; rail.rotation.y=-ang; rail.position.set(mx,yTop-h,mz); group.add(rail); return rail;
+}
+function postAt(group,x,z,yBase){
+  const post=new THREE.Mesh(new THREE.CylinderGeometry(0.028,0.028,RAIL_H,8),matYellow);
+  post.position.set(x,yBase+RAIL_H/2,z); group.add(post);
+  const toe=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.12,0.05),matYellow);
+  toe.position.set(x,yBase+0.06,z); group.add(toe);
+}
+function buildGuardrail(group,pts,yBase){
+  for(let i=0;i<pts.length;i++){ const[x,z]=pts[i]; postAt(group,x,z,yBase);
+    if(i<pts.length-1){ const[x2,z2]=pts[i+1];
+      railBetween(group,x,z,x2,z2,yBase+RAIL_H,0); railBetween(group,x,z,x2,z2,yBase+RAIL_H,RAIL_H-RAIL_MID); } }
+}
+function buildStairs(group,xC,zEdge,dirZ,depthDrop){
+  const steps=Math.max(7,Math.round(depthDrop/0.19)), riser=depthDrop/steps, run=0.27, width=0.95;
+  for(let i=0;i<steps;i++){
+    const sy=-riser*(i+1), sz=zEdge+dirZ*(run*(i+0.5)+0.15);
+    const step=new THREE.Mesh(new THREE.BoxGeometry(width,riser,run*0.96),matSteel(0x596169,0.55,0.7));
+    step.position.set(xC,sy+riser/2,sz); step.castShadow=true; step.receiveShadow=true; group.add(step);
+  }
+  const railZ0=zEdge+dirZ*0.05, railZ1=zEdge+dirZ*(run*steps+0.15);
+  [width/2+0.05,-width/2-0.05].forEach(dx=>{
+    const r=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.022,Math.hypot(railZ1-railZ0,depthDrop),8),matYellow);
+    r.position.set(xC+dx,-depthDrop/2+RAIL_H*0.55,(railZ0+railZ1)/2);
+    r.rotation.x=Math.atan2(depthDrop,Math.abs(railZ1-railZ0))*(-dirZ);
+    group.add(r);
+    for(let i=0;i<=steps;i+=2){ const py=-riser*i, pz=zEdge+dirZ*(run*i+0.15);
+      const p=new THREE.Mesh(new THREE.CylinderGeometry(0.022,0.022,RAIL_H*0.65,8),matYellow);
+      p.position.set(xC+dx,py-RAIL_H*0.32,pz); group.add(p); }
+  });
+}
 
 const matSteel=(c=0x8b949d,m=0.92,r=0.36)=>new THREE.MeshStandardMaterial({color:c,metalness:m,roughness:r});
 const matIron =(c=0x4a525a,m=0.6,r=0.62)=>new THREE.MeshStandardMaterial({color:c,metalness:m,roughness:r});
@@ -330,7 +367,8 @@ function buildAll(){
   const rollerR=clamp(P.rollerD/2,0.18,tyreOR*0.85), rollerL=P.rollerL;
   const offA=30*Math.PI/180, Rc=tyreOR+rollerR;
   const yC=-Rc*Math.cos(offA), zL=Rc*Math.sin(offA);
-  groundLevel=yC-rollerR-R*0.8;
+  groundLevel=Math.min(-TRENCH_DEPTH_NOM,(yC-rollerR*0.5)-0.3);
+  const trenchHalfZ=zL+rollerR*1.2+TRENCH_CLEAR, trenchHalfX=L/2+R*2.6+TRENCH_CLEAR;
 
   /* ---- casco + refratário (giram) ---- */
   const spin=new THREE.Group(); tilt.add(spin); K.spin=spin;
@@ -367,8 +405,6 @@ function buildAll(){
 
   /* ---- ESTRUTURA: 3 bases · 2 roletes · 2 mancais/rolete ---- */
   const struct=new THREE.Group(); tilt.add(struct); struct.visible=P.showStruct;
-  ground.position.y=groundLevel; grid.position.y=groundLevel+0.02;
-  contact.position.set(0,groundLevel+0.03,0); contact.scale.set(L*1.15,tyreOR*4.2,1);
   const matFound=new THREE.MeshStandardMaterial({color:0x262d34,roughness:0.96,metalness:0.04});
   baseXs.forEach((bx,bi)=>{
     const ph=(yC-rollerR*0.5)-groundLevel;
@@ -404,6 +440,44 @@ function buildAll(){
     t.position.set(0,Math.cos(a)*pinR,Math.sin(a)*pinR); t.rotation.set(a,0,0); pinion.add(t); }
   const motor=new THREE.Mesh(new THREE.BoxGeometry(R*1.2,R*0.72,R*0.72),matCast(0x2f363d,0.5,0.6));
   motor.position.set(gearX-R*1.1,pinY,0); motor.castShadow=true; struct.add(motor);
+
+  /* ---- TRINCHEIRA DO FORNO: piso fabril (com vão), poço, guarda-corpos NR12 e escada ---- */
+  if(groundFrame){disp(groundFrame);kilnSector.remove(groundFrame);}
+  if(trenchGroup){disp(trenchGroup);kilnSector.remove(trenchGroup);}
+  groundFrame=new THREE.Group(); kilnSector.add(groundFrame);
+  const BIG=200;
+  const stripNS=(zc,zh)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(BIG*2,zh),matFloor);
+    m.rotation.x=-Math.PI/2; m.position.set(0,0,zc); m.receiveShadow=true; groundFrame.add(m);};
+  const stripEW=(xc,xh)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(xh,trenchHalfZ*2),matFloor);
+    m.rotation.x=-Math.PI/2; m.position.set(xc,0,0); m.receiveShadow=true; groundFrame.add(m);};
+  stripNS( trenchHalfZ+(BIG-trenchHalfZ)/2, BIG-trenchHalfZ); // norte (z>trincheira)
+  stripNS(-(trenchHalfZ+(BIG-trenchHalfZ)/2), BIG-trenchHalfZ); // sul (z<-trincheira)
+  stripEW( trenchHalfX+(BIG-trenchHalfX)/2, BIG-trenchHalfX); // leste (x>trincheira)
+  stripEW(-(trenchHalfX+(BIG-trenchHalfX)/2), BIG-trenchHalfX); // oeste (x<-trincheira)
+  const grid=new THREE.GridHelper(Math.max(BIG*0.8,trenchHalfX*2.4),48,0x1f2b38,0x161f29);
+  grid.position.y=0.015; groundFrame.add(grid);
+
+  trenchGroup=new THREE.Group(); kilnSector.add(trenchGroup);
+  const pitFloor=new THREE.Mesh(new THREE.PlaneGeometry(trenchHalfX*2,trenchHalfZ*2),matConcrete);
+  pitFloor.rotation.x=-Math.PI/2; pitFloor.position.y=groundLevel; pitFloor.receiveShadow=true; trenchGroup.add(pitFloor);
+  const pitH=-groundLevel;
+  const wallMat=matConcrete;
+  const wallNS=new THREE.BoxGeometry(trenchHalfX*2+0.4,pitH,0.2);
+  [trenchHalfZ,-trenchHalfZ].forEach(zw=>{ const w=new THREE.Mesh(wallNS,wallMat); w.position.set(0,groundLevel+pitH/2,zw); w.receiveShadow=true; w.castShadow=true; trenchGroup.add(w); });
+  const wallEW=new THREE.BoxGeometry(0.2,pitH,trenchHalfZ*2+0.4);
+  [trenchHalfX,-trenchHalfX].forEach(xw=>{ const w=new THREE.Mesh(wallEW,wallMat); w.position.set(xw,groundLevel+pitH/2,0); w.receiveShadow=true; w.castShadow=true; trenchGroup.add(w); });
+  const contact=new THREE.Mesh(new THREE.PlaneGeometry(L*1.15,tyreOR*4.2),
+    new THREE.MeshBasicMaterial({map:makeShadowTex(),transparent:true,depthWrite:false}));
+  contact.rotation.x=-Math.PI/2; contact.position.set(0,groundLevel+0.03,0); trenchGroup.add(contact);
+  // guarda-corpo amarelo NR12 (1,10 m) ao redor do poço, com vão para a escada
+  const stairZ=trenchHalfZ, stairX=-trenchHalfX*0.45, stairGap=0.85;
+  buildGuardrail(trenchGroup,[[-trenchHalfX,trenchHalfZ],[stairX-stairGap,trenchHalfZ]],0);
+  buildGuardrail(trenchGroup,[[stairX+stairGap,trenchHalfZ],[trenchHalfX,trenchHalfZ]],0);
+  buildGuardrail(trenchGroup,[[trenchHalfX,trenchHalfZ],[trenchHalfX,-trenchHalfZ]],0);
+  buildGuardrail(trenchGroup,[[trenchHalfX,-trenchHalfZ],[-trenchHalfX,-trenchHalfZ]],0);
+  buildGuardrail(trenchGroup,[[-trenchHalfX,-trenchHalfZ],[-trenchHalfX,trenchHalfZ]],0);
+  buildStairs(trenchGroup,stairX,stairZ,1,pitH);
+  addLabel('Trincheira do forno · acesso p/ manutenção',0,RAIL_H+0.3,trenchHalfZ+0.6,'rgba(245,197,33,0.95)');
 
   /* ---- INTERIOR: leito de material (não gira) ---- */
   const stat=new THREE.Group(); tilt.add(stat);
