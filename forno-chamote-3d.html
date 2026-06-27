@@ -836,11 +836,13 @@ function colorBed(){
    5. CÂMERA (órbita própria + presets)
 =================================================================== */
 const cam={tθ:0.62,tφ:1.02,tr:48,θ:0.62,φ:1.02,r:48,target:new THREE.Vector3(0,0,0)};
+let frameRadius=P.L*1.25;
 function setView(v){
-  if(v==='persp'){cam.tθ=0.62;cam.tφ=1.0;cam.tr=P.L*1.25;}
-  else if(v==='side'){cam.tθ=Math.PI/2;cam.tφ=Math.PI/2;cam.tr=P.L*0.92;}
-  else if(v==='front'){cam.tθ=0.001;cam.tφ=1.46;cam.tr=P.L*0.92;}
-  else if(v==='top'){cam.tθ=Math.PI/2;cam.tφ=0.06;cam.tr=P.L*1.0;}
+  cam.tr=frameRadius;
+  if(v==='persp'){cam.tθ=0.62;cam.tφ=1.0;}
+  else if(v==='side'){cam.tθ=Math.PI/2;cam.tφ=Math.PI/2;}
+  else if(v==='front'){cam.tθ=0.001;cam.tφ=1.46;}
+  else if(v==='top'){cam.tθ=Math.PI/2;cam.tφ=0.06;}
 }
 function sectorBox(obj){
   const box=new THREE.Box3();
@@ -853,13 +855,19 @@ function sectorBox(obj){
   });
   return box;
 }
-let curSector='all';
+let curSector='all',curView='persp';
 function setSector(name){
   curSector=name;
   const groups={feed:feedSector,kiln:kilnSector,cooler:coolerSector,transport:transportSector};
   if(name==='all'){
     Object.values(groups).forEach(g=>g.visible=true); chuteGroup.visible=true;
-    cam.target.set(0,0,0); cam.tθ=0.62; cam.tφ=1.0; cam.tr=P.L*1.6;
+    const box=new THREE.Box3();
+    Object.values(groups).forEach(g=>box.union(sectorBox(g)));
+    if(!box.isEmpty()){
+      const c=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3());
+      cam.target.copy(c);
+      frameRadius=Math.max(sz.x,sz.y,sz.z,8)*1.25;
+    } else { cam.target.set(0,0,0); frameRadius=P.L*1.6; }
   } else {
     Object.entries(groups).forEach(([k,g])=>g.visible=(k===name));
     chuteGroup.visible=(name==='kiln'||name==='cooler');
@@ -867,10 +875,10 @@ function setSector(name){
     if(!box.isEmpty()){
       const c=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3());
       cam.target.copy(c);
-      cam.tr=Math.max(sz.x,sz.y,sz.z,8)*1.6;
-      cam.tθ=0.62; cam.tφ=1.0;
+      frameRadius=Math.max(sz.x,sz.y,sz.z,8)*1.6;
     }
   }
+  setView(curView);
 }
 function camUpdate(){
   cam.θ=lerp(cam.θ,cam.tθ,0.12);cam.φ=lerp(cam.φ,cam.tφ,0.12);cam.r=lerp(cam.r,cam.tr,0.12);
@@ -1018,7 +1026,7 @@ addEventListener('resize',resize);
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
 function bindRange(id,key,fmtf,struct){const s=$('#s-'+id),v=$('#v-'+id);
   s.addEventListener('input',()=>{P[key]=parseFloat(s.value);v.textContent=fmtf(P[key]);if(!struct)refreshAnalysis();});
-  if(struct)s.addEventListener('change',()=>{buildAll();refreshAnalysis();});
+  if(struct)s.addEventListener('change',()=>{buildAll();setSector(curSector);refreshAnalysis();});
   v.textContent=fmtf(P[key]);}
 bindRange('T','Tset',x=>fmt(x)+' °C');
 bindRange('inc','incline',x=>fmt(x,1).replace('.',',')+'°');
@@ -1050,14 +1058,14 @@ $('#calib-reset').addEventListener('click',()=>{
 });
 refreshCalib();
 $$('#chips .chip').forEach(b=>{const k=b.dataset.t;b.classList.toggle('off',!P[k]);b.addEventListener('click',()=>{P[k]=!P[k];b.classList.toggle('off',!P[k]);applyToggles();});});
-$$('.views button').forEach(b=>b.addEventListener('click',()=>{$$('.views button').forEach(x=>x.classList.remove('on'));b.classList.add('on');setView(b.dataset.view);}));
+$$('.views button').forEach(b=>b.addEventListener('click',()=>{$$('.views button').forEach(x=>x.classList.remove('on'));b.classList.add('on');curView=b.dataset.view;setView(curView);}));
 $$('#sectors button').forEach(b=>b.addEventListener('click',()=>{$$('#sectors button').forEach(x=>x.classList.remove('on'));b.classList.add('on');setSector(b.dataset.sec);}));
 $('#toggle').addEventListener('click',()=>$('#panel').classList.toggle('open'));
 
 /* ===================================================================
    11. INÍCIO
 =================================================================== */
-buildAll(); resize(); setView('persp'); refreshAnalysis();
+buildAll(); resize(); setView('persp'); setSector('all'); refreshAnalysis();
 L0.style.display='none'; requestAnimationFrame(animate);
 })();
 </script>
