@@ -52,6 +52,12 @@
   .views button{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--txt);
     border-radius:10px;padding:9px;font-size:12px;font-weight:600;cursor:pointer}
   .views button:hover{background:rgba(255,255,255,.1)}
+  .views button.on{background:var(--cyan);color:#062029;border-color:var(--cyan)}
+  .sectors{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:9px}
+  .sectors button{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--txt);
+    border-radius:10px;padding:8px 4px;font-size:11px;font-weight:600;cursor:pointer}
+  .sectors button:hover{background:rgba(255,255,255,.1)}
+  .sectors button.on{background:var(--amber);color:#1a1206;border-color:var(--amber-d)}
   .btn-full{width:100%;background:var(--cyan);color:#062029;border:none;border-radius:11px;
     padding:11px;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px}
   .btn-full:active{transform:translateY(1px)}
@@ -157,6 +163,13 @@
       <button data-view="side">Lado</button>
       <button data-view="front">Frente (perfil)</button>
       <button data-view="top">Topo</button>
+    </div>
+    <div class="sectors" id="sectors">
+      <button data-sec="all" class="on">Planta completa</button>
+      <button data-sec="feed">Alimentação</button>
+      <button data-sec="kiln">Forno</button>
+      <button data-sec="cooler">Resfriador</button>
+      <button data-sec="transport">Elevador+Baias</button>
     </div>
     <div class="chips" id="chips">
       <button class="chip" data-t="cutaway">✂︎ Corte</button>
@@ -458,15 +471,15 @@ function buildAll(){
   groundFrame=new THREE.Group(); kilnSector.add(groundFrame);
   const BIG=200;
   const stripNS=(zc,zh)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(BIG*2,zh),matFloor);
-    m.rotation.x=-Math.PI/2; m.position.set(0,0,zc); m.receiveShadow=true; groundFrame.add(m);};
+    m.rotation.x=-Math.PI/2; m.position.set(0,0,zc); m.receiveShadow=true; m.userData.skipFrame=true; groundFrame.add(m);};
   const stripEW=(xc,xh)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(xh,trenchHalfZ*2),matFloor);
-    m.rotation.x=-Math.PI/2; m.position.set(xc,0,0); m.receiveShadow=true; groundFrame.add(m);};
+    m.rotation.x=-Math.PI/2; m.position.set(xc,0,0); m.receiveShadow=true; m.userData.skipFrame=true; groundFrame.add(m);};
   stripNS( trenchHalfZ+(BIG-trenchHalfZ)/2, BIG-trenchHalfZ); // norte (z>trincheira)
   stripNS(-(trenchHalfZ+(BIG-trenchHalfZ)/2), BIG-trenchHalfZ); // sul (z<-trincheira)
   stripEW( trenchHalfX+(BIG-trenchHalfX)/2, BIG-trenchHalfX); // leste (x>trincheira)
   stripEW(-(trenchHalfX+(BIG-trenchHalfX)/2), BIG-trenchHalfX); // oeste (x<-trincheira)
   const grid=new THREE.GridHelper(Math.max(BIG*0.8,trenchHalfX*2.4),48,0x1f2b38,0x161f29);
-  grid.position.y=0.015; groundFrame.add(grid);
+  grid.position.y=0.015; grid.userData.skipFrame=true; groundFrame.add(grid);
 
   trenchGroup=new THREE.Group(); kilnSector.add(trenchGroup);
   const pitFloor=new THREE.Mesh(new THREE.PlaneGeometry(trenchHalfX*2,trenchHalfZ*2),matConcrete);
@@ -662,9 +675,9 @@ function buildCooler(){
   const BIG=120;
   const cGroundFrame=new THREE.Group(); coolerSector.add(cGroundFrame);
   const stripNS=(zc,zh)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(BIG*2,zh),matFloor);
-    m.rotation.x=-Math.PI/2; m.position.set(0,0,zc); m.receiveShadow=true; cGroundFrame.add(m);};
+    m.rotation.x=-Math.PI/2; m.position.set(0,0,zc); m.receiveShadow=true; m.userData.skipFrame=true; cGroundFrame.add(m);};
   const stripEW=(xc,xh)=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(xh,cHalfZ*2),matFloor);
-    m.rotation.x=-Math.PI/2; m.position.set(xc,0,0); m.receiveShadow=true; cGroundFrame.add(m);};
+    m.rotation.x=-Math.PI/2; m.position.set(xc,0,0); m.receiveShadow=true; m.userData.skipFrame=true; cGroundFrame.add(m);};
   stripNS( cHalfZ+(BIG-cHalfZ)/2, BIG-cHalfZ); stripNS(-(cHalfZ+(BIG-cHalfZ)/2), BIG-cHalfZ);
   stripEW( cHalfX+(BIG-cHalfX)/2, BIG-cHalfX); stripEW(-(cHalfX+(BIG-cHalfX)/2), BIG-cHalfX);
 
@@ -828,6 +841,36 @@ function setView(v){
   else if(v==='side'){cam.tθ=Math.PI/2;cam.tφ=Math.PI/2;cam.tr=P.L*0.92;}
   else if(v==='front'){cam.tθ=0.001;cam.tφ=1.46;cam.tr=P.L*0.92;}
   else if(v==='top'){cam.tθ=Math.PI/2;cam.tφ=0.06;cam.tr=P.L*1.0;}
+}
+function sectorBox(obj){
+  const box=new THREE.Box3();
+  obj.traverse(o=>{
+    if(!o.isMesh||o.userData.skipFrame||!o.visible)return;
+    if(o.isInstancedMesh){
+      const m=new THREE.Matrix4(), wm=new THREE.Matrix4(), v=new THREE.Vector3();
+      for(let i=0;i<o.count;i++){ o.getMatrixAt(i,m); wm.multiplyMatrices(o.matrixWorld,m); v.setFromMatrixPosition(wm); box.expandByPoint(v); }
+    } else { box.expandByObject(o); }
+  });
+  return box;
+}
+let curSector='all';
+function setSector(name){
+  curSector=name;
+  const groups={feed:feedSector,kiln:kilnSector,cooler:coolerSector,transport:transportSector};
+  if(name==='all'){
+    Object.values(groups).forEach(g=>g.visible=true); chuteGroup.visible=true;
+    cam.target.set(0,0,0); cam.tθ=0.62; cam.tφ=1.0; cam.tr=P.L*1.6;
+  } else {
+    Object.entries(groups).forEach(([k,g])=>g.visible=(k===name));
+    chuteGroup.visible=(name==='kiln'||name==='cooler');
+    const box=sectorBox(groups[name]);
+    if(!box.isEmpty()){
+      const c=box.getCenter(new THREE.Vector3()), sz=box.getSize(new THREE.Vector3());
+      cam.target.copy(c);
+      cam.tr=Math.max(sz.x,sz.y,sz.z,8)*1.6;
+      cam.tθ=0.62; cam.tφ=1.0;
+    }
+  }
 }
 function camUpdate(){
   cam.θ=lerp(cam.θ,cam.tθ,0.12);cam.φ=lerp(cam.φ,cam.tφ,0.12);cam.r=lerp(cam.r,cam.tr,0.12);
@@ -1007,7 +1050,8 @@ $('#calib-reset').addEventListener('click',()=>{
 });
 refreshCalib();
 $$('#chips .chip').forEach(b=>{const k=b.dataset.t;b.classList.toggle('off',!P[k]);b.addEventListener('click',()=>{P[k]=!P[k];b.classList.toggle('off',!P[k]);applyToggles();});});
-$$('.views button').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+$$('.views button').forEach(b=>b.addEventListener('click',()=>{$$('.views button').forEach(x=>x.classList.remove('on'));b.classList.add('on');setView(b.dataset.view);}));
+$$('#sectors button').forEach(b=>b.addEventListener('click',()=>{$$('#sectors button').forEach(x=>x.classList.remove('on'));b.classList.add('on');setSector(b.dataset.sec);}));
 $('#toggle').addEventListener('click',()=>$('#panel').classList.toggle('open'));
 
 /* ===================================================================
