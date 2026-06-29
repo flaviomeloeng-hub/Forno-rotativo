@@ -1,9 +1,17 @@
-# Simulador 3D — Forno Rotativo de Chamote (Togni)
+# Unidade Sacramento — Forno Rotativo de Chamote (Togni)
 
 Simulador interativo 3D de um forno rotativo de **chamote** (calcinação de argila/bauxita refratária),
 produzido na unidade **Sacramento** e usado em **Poços de Caldas**. Grades simuladas: **45%, 70% e 90% de Al₂O₃**.
 
-Arquivo principal: **`forno-chamote-3d.html`** (HTML único, Three.js r128 via CDN, sem etapa de build).
+Arquivos:
+- **`unidade-sacramento.html`** — sistema completo da Unidade Sacramento: planta inteira (alimentação,
+  forno, resfriador, elevador + baias) e os módulos de **Produção** e **Manutenção** (IA de regras sobre
+  o modelo físico: OEE, refugo previsto, desgaste de roletes/alianças, fadiga térmica do refratário,
+  manutenção preventiva e recomendações de ajuste do passeio do forno).
+- **`forno-rotativo-sacramento.html`** — modelo isolado, apenas do forno rotativo (sem os demais setores
+  da planta), para uso pontual/focado no equipamento.
+
+Ambos são HTML único, Three.js r128 via CDN, sem etapa de build.
 
 ---
 
@@ -14,7 +22,7 @@ Arquivo principal: **`forno-chamote-3d.html`** (HTML único, Three.js r128 via C
   ```bash
   npx serve .        # ou: python -m http.server 8000
   ```
-  e abrir `http://localhost:8000/forno-chamote-3d.html`.
+  e abrir `http://localhost:8000/unidade-sacramento.html`.
 - **Deploy:** arrastar a pasta no Netlify (mesmo fluxo do dashboard PCM).
 
 ---

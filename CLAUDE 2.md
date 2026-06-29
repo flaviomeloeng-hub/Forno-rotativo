@@ -1,10 +1,14 @@
-# CLAUDE.md — Forno Rotativo de Chamote 3D
+# CLAUDE.md — Unidade Sacramento / Forno Rotativo de Chamote 3D
 
 Contexto que o Claude Code deve carregar a cada sessão. Mantê-lo curto e verificável.
 
 ## O que é
 Simulador 3D interativo de um forno rotativo de **chamote** (Togni — Sacramento/Poços de Caldas),
-grades **45/70/90% Al₂O₃**. Arquivo único: `forno-chamote-3d.html`. Stack: **Three.js r128** via CDN, sem build.
+grades **45/70/90% Al₂O₃**. Stack: **Three.js r128** via CDN, sem build. Dois arquivos:
+- `unidade-sacramento.html` — sistema completo (planta inteira + módulos de Produção e Manutenção/IA).
+- `forno-rotativo-sacramento.html` — cópia derivada, restrita só ao setor do forno (sem alimentação/
+  resfriador/elevador/baias). Ao alterar o arquivo completo, repassar manualmente as mudanças relevantes
+  de engenharia/cálculo para esta cópia (ela compartilha o mesmo modelo, mas é mantida como arquivo separado).
 
 ## Como rodar / testar
 - Não há etapa de build. Para preview: `npx serve .` e abrir o `.html` em `http://localhost:3000`.
