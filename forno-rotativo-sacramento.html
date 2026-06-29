@@ -193,6 +193,16 @@
   </div>
 
   <div class="sec">
+    <h2>KPIs de Produção</h2>
+    <div class="hint">Indicadores derivados dos parâmetros atuais (produção, OEE e qualidade) — ilustrativos, recalculados em tempo real.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+      <div style="flex:1;min-width:150px"><div style="font-size:10px;color:var(--dim);margin-bottom:3px">OEE — composição</div><canvas id="kpi-pie" width="180" height="150" style="width:100%;height:120px;display:block"></canvas></div>
+      <div style="flex:1;min-width:150px"><div style="font-size:10px;color:var(--dim);margin-bottom:3px">Produção por turno (t)</div><canvas id="kpi-bar" width="180" height="150" style="width:100%;height:120px;display:block"></canvas></div>
+    </div>
+    <div style="margin-top:10px"><div style="font-size:10px;color:var(--dim);margin-bottom:3px">Produção acumulada no turno (t)</div><canvas id="kpi-line" width="360" height="100" style="width:100%;height:80px;display:block"></canvas></div>
+  </div>
+
+  <div class="sec">
     <h2>Visualização</h2>
     <div class="views">
       <button data-view="persp">Perspectiva</button>
@@ -1302,8 +1312,54 @@ function refreshIA(){
     <div class="r"><span>Temp. estimada dos mancais</span><b>${fmt(bearingTempEst(),0)} °C</b></div>
     <div class="r"><span>Próxima manutenção recomendada</span><b>${daysToMaint()} dias</b></div>`;
   elR.innerHTML=aiRecommendations().map(r=>'• '+r).join('<br>');
+  drawKPI(oeeV,avail,perf,q);
 }
 $('#ia-reset').addEventListener('click',()=>{AI.wearAccum=0;AI.thermalStress=0;refreshIA();});
+
+/* ---- KPIs de produção: pizza (OEE), barra (turnos), linha (acumulado no turno) ---- */
+function setupKPICanvas(id){
+  const cv=document.getElementById(id); if(!cv)return null;
+  const dpr=Math.min(2,devicePixelRatio||1),w=cv.clientWidth||180,h=cv.clientHeight||120;
+  cv.width=w*dpr;cv.height=h*dpr; const x=cv.getContext('2d'); x.scale(dpr,dpr); x.clearRect(0,0,w,h);
+  return {x,w,h};
+}
+function drawKPI(oeeV,avail,perf,q){
+  const pie=setupKPICanvas('kpi-pie');
+  if(pie){
+    const {x,w,h}=pie, cx=w/2,cy=h/2,rad=Math.min(w,h)/2-10;
+    const segs=[['Disp.',avail,'#54c8e8'],['Perf.',perf,'#f5a623'],['Qual.',q,'#4cd08a']];
+    const tot=segs.reduce((s,a)=>s+a[1],0)||1; let a0=-Math.PI/2;
+    segs.forEach(([n,v,c])=>{ const a1=a0+(v/tot)*Math.PI*2;
+      x.beginPath();x.moveTo(cx,cy);x.arc(cx,cy,rad,a0,a1);x.closePath();x.fillStyle=c;x.fill(); a0=a1; });
+    x.fillStyle='rgba(9,12,17,0.9)';x.beginPath();x.arc(cx,cy,rad*0.52,0,Math.PI*2);x.fill();
+    x.fillStyle='#eaeef3';x.font='600 12px Inter,Arial';x.textAlign='center';x.textBaseline='middle';
+    x.fillText((oeeV*100).toFixed(0)+'%',cx,cy);
+    x.font='9px Inter,Arial';x.textAlign='left';x.textBaseline='alphabetic';
+    segs.forEach(([n,v,c],i)=>{ x.fillStyle=c;x.fillRect(4,h-10-i*12,7,7); x.fillStyle='rgba(255,255,255,0.6)'; x.fillText(n+' '+(v*100).toFixed(0)+'%',14,h-4-i*12); });
+  }
+  const bar=setupKPICanvas('kpi-bar');
+  if(bar){
+    const {x,w,h}=bar, turnos=['Manhã','Tarde','Noite'], base=P.feed*8*oeeV;
+    const vals=turnos.map((_,i)=>Math.max(0,base*(1+((i-1)*0.04))));
+    const maxV=Math.max(...vals,1), padB=16, padT=6, bw=w/turnos.length;
+    vals.forEach((v,i)=>{ const bh=(v/maxV)*(h-padB-padT), bx=i*bw+bw*0.18, bwid=bw*0.64;
+      x.fillStyle='#f5a623'; x.fillRect(bx,h-padB-bh,bwid,bh);
+      x.fillStyle='rgba(255,255,255,0.65)';x.font='9px Inter,Arial';x.textAlign='center';
+      x.fillText(fmt(v,0),bx+bwid/2,h-padB-bh-3);
+      x.fillStyle='rgba(255,255,255,0.45)'; x.fillText(turnos[i],bx+bwid/2,h-4); });
+  }
+  const line=setupKPICanvas('kpi-line');
+  if(line){
+    const {x,w,h}=line, hrs=8, rate=P.feed*oeeV, padB=14,padT=6;
+    const totalT=rate*hrs, maxV=Math.max(totalT,1);
+    x.beginPath();
+    for(let i=0;i<=40;i++){ const t=i/40*hrs, ramp=clamp(t/0.75,0,1), acc=rate*(t-Math.min(t,0.75)*(1-ramp/2));
+      const xx=t/hrs*w, yy=h-padB-(Math.max(acc,0)/maxV)*(h-padB-padT); i?x.lineTo(xx,yy):x.moveTo(xx,yy); }
+    x.strokeStyle='#54c8e8';x.lineWidth=2;x.stroke();
+    x.fillStyle='rgba(255,255,255,0.45)';x.font='9px Inter,Arial';x.textAlign='left';x.fillText('0h',2,h-2);
+    x.textAlign='right';x.fillText('8h · '+fmt(totalT,1)+' t',w-2,h-2);
+  }
+}
 
 $$('#grades button').forEach(b=>b.addEventListener('click',()=>{$$('#grades button').forEach(x=>x.classList.remove('on'));b.classList.add('on');P.grade=b.dataset.g;refreshAnalysis();refreshCalib();}));
 
