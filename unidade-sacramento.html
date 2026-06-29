@@ -160,7 +160,23 @@
     <h2>Agulhas de regulagem &amp; passeio do forno</h2>
     <div class="row"><div class="lab"><span>Peso do forno (estrutura + refratário)</span><b id="v-kw">80 t</b></div>
       <input type="range" id="s-kw" min="20" max="220" step="1" value="80"></div>
-    <div class="hint">A agulha de cada mancal regula o avanço (mm) daquele lado do rolete. A diferença entre os 2 mancais de um mesmo rolete inclina o rolete (efeito "estere") e induz o passeio axial do forno — junto com o peso e a temperatura (atrito casco/rolete).</div>
+    <div class="hint">Vista de pé junto ao <b>maçarico</b>, olhando para a <b>alimentação</b> (fundo do forno): cada base tem 2 roletes (direita/esquerda) e cada rolete apoia em 2 mancais (frontal/traseiro no sentido axial). Numeração de campo: <b>1=frontal-direita · 2=traseiro-direita · 3=traseiro-esquerda · 4=frontal-esquerda</b>.</div>
+    <svg id="mancal-diagram" viewBox="0 0 300 110" style="width:100%;height:auto;margin:6px 0;background:rgba(255,255,255,.03);border-radius:8px">
+      <line x1="20" y1="55" x2="280" y2="55" stroke="#54c8e8" stroke-width="3"/>
+      <text x="14" y="20" fill="#f5a623" font-size="9">maçarico</text>
+      <text x="248" y="20" fill="#8f9caa" font-size="9">alimentação</text>
+      <g font-size="9" fill="#eaeef3" text-anchor="middle">
+        <circle cx="80" cy="30" r="11" fill="#222"/><text x="80" y="33">1</text>
+        <circle cx="160" cy="30" r="11" fill="#222"/><text x="160" y="33">2</text>
+        <circle cx="160" cy="82" r="11" fill="#222"/><text x="160" y="85">3</text>
+        <circle cx="80" cy="82" r="11" fill="#222"/><text x="80" y="85">4</text>
+      </g>
+      <text x="80" y="50" font-size="8" fill="#8f9caa" text-anchor="middle">direita</text>
+      <text x="160" y="50" font-size="8" fill="#8f9caa" text-anchor="middle">direita</text>
+      <text x="80" y="100" font-size="8" fill="#8f9caa" text-anchor="middle">esquerda</text>
+      <text x="160" y="100" font-size="8" fill="#8f9caa" text-anchor="middle">esquerda</text>
+    </svg>
+    <div class="hint">A agulha de cada mancal regula o avanço (mm) daquele lado do rolete. A diferença entre os 2 mancais de um mesmo rolete inclina o rolete no plano horizontal (efeito "skew"/esteira) e empurra o casco axialmente — combinado ao peso do forno, à temperatura (dilatação do casco) e ao atrito casco/rolete. <b>Regra de campo (literatura de fornos rotativos — cimento/cal/agregados):</b> skew típico de operação ≤ <b>3 mm</b> por mancal (diferença entre frontal/traseiro do mesmo rolete); inclinar os roletes de um mesmo lado (1↔2 e 4↔3) <b>no mesmo sentido</b> para gerar empuxo coordenado e previsível; nunca ajustar um rolete isolado sem reavaliar o oposto. Dois <b>roletes de apoio axial</b> na pista central (Base 2) limitam fisicamente o passeio — o casco toca neles e inverte o sentido, garantindo passeio lento e cíclico (poucos mm/h), sem deslizamento brusco.</div>
     <div id="needles-grid"></div>
     <div class="out" id="passeio-out" style="margin-top:8px;line-height:1.6"></div>
     <button class="btn-full" id="needles-reset" style="margin-top:8px;background:rgba(255,255,255,.08);color:var(--txt)">Zerar agulhas e posição</button>
@@ -196,6 +212,7 @@
       <button class="chip" data-t="showMat">⛏ Material</button>
       <button class="chip" data-t="showFlame">🔥 Chama</button>
       <button class="chip" data-t="showStruct">🏗 Estrutura</button>
+      <button class="chip" data-t="showShell">🏭 Galpão</button>
       <button class="chip" data-t="labels">🏷 Rótulos</button>
       <button class="chip" data-t="shadows">☀︎ Sombras</button>
       <button class="chip" data-t="spin">↻ Girar</button>
@@ -211,6 +228,17 @@
     <button class="btn-full" id="batch">Soltar lote de teste ▸</button>
     <div id="log"></div>
     <div class="note" id="note"></div>
+  </div>
+
+  <div class="sec">
+    <h2>Importar / Exportar</h2>
+    <div class="hint">Importe o desenho do forno (imagem/PDF como referência visual), dimensões/planilhas (JSON ou CSV) ou um arquivo de configuração salvo anteriormente.</div>
+    <input type="file" id="imp-file" accept=".json,.csv,.pdf,.png,.jpg,.jpeg" style="display:none">
+    <button class="btn-ghost" id="imp-btn">📂 Importar desenho/dimensões/planilha…</button>
+    <div class="hint" id="imp-status"></div>
+    <button class="btn-ghost" id="exp-config">💾 Exportar configuração do forno (.json)</button>
+    <button class="btn-ghost" id="exp-prod">📊 Exportar dados de produção/manutenção (.csv)</button>
+    <button class="btn-ghost" id="exp-curve">🔥 Exportar curva de queima (.csv)</button>
   </div>
 </div>
 
@@ -230,7 +258,7 @@ const THREE=window.THREE;
 const P = {
   grade:'70', Tset:1500, incline:3.0, rpm:2.0, draft:70, feed:8.0,
   L:30, D:2.4, tyreD:2.8, rollerD:1.1, rollerL:0.9,
-  cutaway:true, showMat:true, showFlame:true, showStruct:true, labels:true, shadows:true, spin:true,
+  cutaway:true, showMat:true, showFlame:true, showStruct:true, showShell:true, labels:true, shadows:true, spin:true,
   kilnWeightT:80, mancais:new Array(12).fill(0)
 };
 // Janelas de queima INDICATIVAS — calibrar com dados reais da Togni
@@ -407,7 +435,8 @@ let R=1.2, Rin=0.9, baseXs=[], groundLevel=-3;
 // Trincheira do forno: profundidade indicativa ~2,3 m (aprofunda automaticamente p/ liberar roletes maiores),
 // folga lateral/longitudinal ~2,3 m das estruturas; guarda-corpo NR12 a 1,10 m + travessão intermediário a 0,55 m.
 const TRENCH_DEPTH_NOM=2.3, TRENCH_CLEAR=2.3, RAIL_H=1.10, RAIL_MID=0.55, RAIL_YELLOW=0xf5c521;
-let groundFrame=null, trenchGroup=null, feedGroup=null;
+const WALK_LIMIT_MM=110; // passeio axial máx. até contato com os roletes de apoio (Base 2)
+let groundFrame=null, trenchGroup=null, feedGroup=null, plantShell=null;
 const matConcrete=new THREE.MeshStandardMaterial({color:0x2a2f35,roughness:0.95,metalness:0.02});
 const matFloor=new THREE.MeshStandardMaterial({color:0x12171d,roughness:0.97,metalness:0.0});
 const matYellow=new THREE.MeshStandardMaterial({color:RAIL_YELLOW,roughness:0.55,metalness:0.25,emissive:0x3a2c00,emissiveIntensity:0.15});
@@ -507,7 +536,7 @@ function buildAll(){
   });
 
   /* ---- coroa dentada (gira) ---- */
-  const gearX=baseXs[1]+R*1.0, gearR=Math.max(tyreOR*0.92,R*1.2);
+  const gearX=(baseXs[0]+baseXs[1])/2, gearR=Math.max(tyreOR*0.92,R*1.2);
   const gear=new THREE.Mesh(new THREE.CylinderGeometry(gearR,gearR,R*0.2,56,1),matCast(0x5c646d,0.8,0.45));
   gear.rotation.z=Math.PI/2; gear.position.x=gearX; gear.castShadow=true; spin.add(gear);
   const Nt=48; for(let j=0;j<Nt;j++){ const a=j/Nt*Math.PI*2;
@@ -543,6 +572,19 @@ function buildAll(){
     });
     if(bi===0){ addLabel('Par de roletes',bx,yC-rollerR-R*0.5,zL+rollerR*1.6,'rgba(76,208,138,0.9)');
       addLabel('2 mancais/rolete',bx-rollerL,yC+rollerR*1.3,zL,'rgba(255,255,255,0.55)'); }
+    if(baseNum[bi]===2){
+      /* ---- roletes de apoio/limitação axial (pista central) — travam o passeio do forno ---- */
+      const trR=tyreW*0.55, trW=tyreW*0.5, trY=yC-rollerR*0.95, trZ=zL*0.55;
+      [[1,'thrustRollerPlus'],[-1,'thrustRollerMinus']].forEach(([sgn,key])=>{
+        const tgrp=new THREE.Group(); tgrp.position.set(bx+sgn*(tyreW/2+trW/2+0.02),trY,trZ); struct.add(tgrp);
+        const tgeo=new THREE.CylinderGeometry(trR,trR,trW,24,1); tgeo.rotateX(Math.PI/2);
+        const mat=matCast(0xb33b3b,0.7,0.4); mat.emissive=new THREE.Color(0xff2a2a); mat.emissiveIntensity=0.15;
+        const tmesh=new THREE.Mesh(tgeo,mat); tmesh.castShadow=true; tgrp.add(tmesh); K[key]=tmesh;
+        const stand=new THREE.Mesh(new THREE.BoxGeometry(trW*0.7,trY-groundLevel,trR*1.3),matFound);
+        stand.position.set(0,(groundLevel-trY)/2,0); tgrp.add(stand);
+      });
+      addLabel('Roletes de apoio axial',bx,trY-trR-R*0.35,trZ,'rgba(239,91,91,0.9)');
+    }
   });
   // pinhão de acionamento (gira mais rápido) + motor
   const pinR=R*0.32, pinY=-gearR-pinR*0.95;
@@ -564,10 +606,30 @@ function buildAll(){
     m.rotation.x=-Math.PI/2; m.position.set(xc,0,0); m.receiveShadow=true; m.userData.skipFrame=true; groundFrame.add(m);};
   stripNS( trenchHalfZ+(BIG-trenchHalfZ)/2, BIG-trenchHalfZ); // norte (z>trincheira)
   stripNS(-(trenchHalfZ+(BIG-trenchHalfZ)/2), BIG-trenchHalfZ); // sul (z<-trincheira)
-  stripEW( trenchHalfX+(BIG-trenchHalfX)/2, BIG-trenchHalfX); // leste (x>trincheira)
+  /* piso do pátio do forno (lado leste) vai só até o degrau do resfriador — não "cobre" o nível inferior */
+  const cL_=Math.max(8,L*0.52), cR_=Math.max(0.55,R*0.62);
+  const cHalfX_=cL_/2+cR_*2.0+1.8;
+  const dropY_=-(R+cR_+1.7), offX_=L/2+R*2.2+cHalfX_+1.2;
+  const stepRun=1.8, boundaryX=offX_-cHalfX_-stepRun, stepZHalf=Math.min(trenchHalfZ,2.6);
+  stripEW( (trenchHalfX+boundaryX)/2, boundaryX-trenchHalfX ); // leste — pátio do forno (até o degrau)
   stripEW(-(trenchHalfX+(BIG-trenchHalfX)/2), BIG-trenchHalfX); // oeste (x<-trincheira)
   const grid=new THREE.GridHelper(Math.max(BIG*0.8,trenchHalfX*2.4),48,0x1f2b38,0x161f29);
   grid.position.y=0.015; grid.userData.skipFrame=true; groundFrame.add(grid);
+
+  /* ---- degrau visível patamar forno → patamar resfriador (NÃO é subsolo) ---- */
+  const stepGrp=new THREE.Group(); groundFrame.add(stepGrp);
+  const riserH=-dropY_;
+  const riserWall=new THREE.Mesh(new THREE.BoxGeometry(0.3,riserH,stepZHalf*2),matConcrete);
+  riserWall.position.set(boundaryX,dropY_+riserH/2,0); riserWall.castShadow=true; riserWall.receiveShadow=true; stepGrp.add(riserWall);
+  const nSteps=Math.max(5,Math.round(riserH/0.19)); const stepRiser=riserH/nSteps, run=stepRun/nSteps;
+  for(let i=0;i<nSteps;i++){
+    const sx=boundaryX+run*(i+0.5), sy=0-stepRiser*(i+0.5);
+    const st=new THREE.Mesh(new THREE.BoxGeometry(run*1.02,stepRiser,stepZHalf*2*0.9),matConcrete);
+    st.position.set(sx,sy,0); st.castShadow=true; st.receiveShadow=true; stepGrp.add(st);
+  }
+  buildGuardrail(stepGrp,[[boundaryX,-stepZHalf],[boundaryX,stepZHalf]],0);
+  buildGuardrail(stepGrp,[[offX_-cHalfX_,-stepZHalf],[offX_-cHalfX_,stepZHalf]],dropY_);
+  addLabel('Degrau · patamar do resfriador (acima do solo)',(boundaryX+offX_-cHalfX_)/2,riserH*0.55+dropY_,stepZHalf+0.6,'rgba(245,165,35,0.9)');
 
   trenchGroup=new THREE.Group(); kilnSector.add(trenchGroup);
   const pitFloor=new THREE.Mesh(new THREE.PlaneGeometry(trenchHalfX*2,trenchHalfZ*2),matConcrete);
@@ -690,6 +752,30 @@ function buildAll(){
   for(let i=0;i<7;i++){ const bl=new THREE.Mesh(new THREE.BoxGeometry(R*0.72,R*0.13,0.02),matSteel(0xaab2bb,0.85,0.35)); bl.rotation.z=i/7*Math.PI*2; fan.add(bl); }
   addLabel('Exaustor de tiragem',feedX-R*0.9,R*5.0,0,'rgba(127,176,255,0.9)');
   addLabel('Alimentação',feedX-R*2.0,R*0.4,0,'rgba(255,255,255,0.55)');
+
+  /* ---- duto -> filtro de manga (baghouse) -> chaminé acima do telhado ---- */
+  const dustX=feedX-R*0.9, dustZ0=0, dustZ1=R*3.6, ductY=R*4.55, bagW=R*2.4, bagH=R*2.0;
+  const matDuct=matSteel(0x5a626b,0.78,0.5);
+  const duct1=new THREE.Mesh(new THREE.CylinderGeometry(R*0.3,R*0.3,dustZ1,16),matDuct);
+  duct1.rotation.x=Math.PI/2; duct1.position.set(dustX,ductY,dustZ1/2); tilt.add(duct1);
+  const elbow=new THREE.Mesh(new THREE.SphereGeometry(R*0.32,12,10),matDuct); elbow.position.set(dustX,ductY,dustZ1); tilt.add(elbow);
+  const bagY=ductY+bagH/2+R*0.4;
+  const baghouse=new THREE.Mesh(new THREE.BoxGeometry(bagW,bagH,bagW),matCast(0x3a4148,0.55,0.55));
+  baghouse.castShadow=true; baghouse.position.set(dustX,bagY,dustZ1); tilt.add(baghouse);
+  const duct2=new THREE.Mesh(new THREE.CylinderGeometry(R*0.3,R*0.3,bagY-bagH/2-ductY,12),matDuct);
+  duct2.position.set(dustX,(ductY+(bagY-bagH/2))/2,dustZ1); tilt.add(duct2);
+  for(let mi=0;mi<3;mi++) for(let mj=0;mj<3;mj++){
+    const mg=new THREE.Mesh(new THREE.CylinderGeometry(R*0.1,R*0.1,bagH*0.85,8),matSteel(0xc9cdd1,0.55,0.2));
+    mg.position.set(dustX-bagW*0.32+mi*bagW*0.32,bagY+bagH*0.05,dustZ1-bagW*0.32+mj*bagW*0.32); tilt.add(mg);
+  }
+  addLabel('Filtro de manga',dustX+bagW*0.9,bagY,dustZ1,'rgba(127,176,255,0.85)');
+  const chimH=R*7.5, chimR=R*0.42;
+  const chimY=bagY+bagH/2+chimH/2;
+  const chimney=new THREE.Mesh(new THREE.CylinderGeometry(chimR,chimR*1.15,chimH,20),matCast(0x6b4a3a,0.7,0.25));
+  chimney.castShadow=true; chimney.position.set(dustX,chimY,dustZ1); tilt.add(chimney); K.chimneyTopY=chimY+chimH/2;
+  const chimCap=new THREE.Mesh(new THREE.CylinderGeometry(chimR*1.25,chimR*1.25,R*0.18,20),matCast(0x3a4148,0.6,0.4));
+  chimCap.position.set(dustX,chimY+chimH/2+R*0.1,dustZ1); tilt.add(chimCap);
+  addLabel('Chaminé',dustX+chimR*2,chimY+chimH/2,dustZ1,'rgba(245,165,35,0.85)');
   const hood=new THREE.Mesh(new THREE.BoxGeometry(R*2,R*2.7,R*2.7),matCast(0x2c333b,0.4,0.7));
   hood.material.transparent=true; hood.material.opacity=0.3; hood.position.set(coolX+R*1.0,0,0); tilt.add(hood);
   const burner=new THREE.Mesh(new THREE.CylinderGeometry(R*0.13,R*0.13,R*3.6,18),matSteel(0x7a828b,0.85,0.4));
@@ -890,6 +976,96 @@ function buildElevatorAndBays(offX,dropY,cL,cR,cHalfX){
     addLabel('Baia '+(i+1)+' · '+grades[i%3]+'% Al₂O₃',bayRowX,wallH+0.55,bz,'rgba(245,166,35,0.85)');
   }
   addLabel('Baias de classificação',bayRowX,wallH+1.9,rowZ0-1.4,'rgba(255,255,255,0.6)');
+
+  buildPlantShell();
+}
+
+/* ---- GALPÃO INDUSTRIAL: estrutura, telhado e ambiente fabril (big bags, empilhadeiras, pá carregadeira) ---- */
+function buildPlantShell(){
+  if(plantShell){disp(plantShell);scene.remove(plantShell);}
+  plantShell=new THREE.Group(); scene.add(plantShell); plantShell.visible=P.showShell!==false;
+  const box=new THREE.Box3();
+  [kilnSector,coolerSector,feedSector,transportSector].forEach(g=>box.union(sectorBox(g)));
+  if(box.isEmpty())return;
+  const margin=7, x0=box.min.x-margin, x1=box.max.x+margin, z0=box.min.z-margin, z1=box.max.z+margin;
+  const eaveH=Math.max(box.max.y+5.5,K.chimneyTopY?K.chimneyTopY*0.55:14);
+  const ridgeH=eaveH+Math.max(4,(x1-x0)*0.06);
+  const cx=(x0+x1)/2, cz=(z0+z1)/2, halfX=(x1-x0)/2, halfZ=(z1-z0)/2;
+  const matWall=new THREE.MeshStandardMaterial({color:0x8d949b,roughness:0.85,metalness:0.15,side:THREE.DoubleSide});
+  const matRoof=new THREE.MeshStandardMaterial({color:0x5c3b34,roughness:0.7,metalness:0.2,side:THREE.DoubleSide,transparent:true,opacity:0.4,depthWrite:false});
+  const matSteelCol=matSteel(0x3a4148,0.6,0.5);
+  // colunas perimetrais
+  const colSpacing=8, nx=Math.max(2,Math.round((x1-x0)/colSpacing));
+  for(let i=0;i<=nx;i++){
+    const cxp=x0+(x1-x0)*i/nx;
+    [z0,z1].forEach(zp=>{ const col=new THREE.Mesh(new THREE.BoxGeometry(0.45,eaveH,0.45),matSteelCol);
+      col.position.set(cxp,eaveH/2,zp); col.castShadow=true; plantShell.add(col); });
+  }
+  const nz=Math.max(2,Math.round((z1-z0)/colSpacing));
+  for(let j=0;j<=nz;j++){
+    const czp=z0+(z1-z0)*j/nz;
+    [x0,x1].forEach(xp=>{ const col=new THREE.Mesh(new THREE.BoxGeometry(0.45,eaveH,0.45),matSteelCol);
+      col.position.set(xp,eaveH/2,czp); col.castShadow=true; plantShell.add(col); });
+  }
+  // paredes (translúcidas para não esconder o forno) — fechamento metálico tipo galpão
+  const wallMatT=matWall.clone(); wallMatT.transparent=true; wallMatT.opacity=0.22;
+  const wN=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,eaveH),wallMatT); wN.position.set(cx,eaveH/2,z0); plantShell.add(wN);
+  const wS=wN.clone(); wS.position.set(cx,eaveH/2,z1); wS.rotation.y=Math.PI; plantShell.add(wS);
+  const wW=new THREE.Mesh(new THREE.PlaneGeometry(z1-z0,eaveH),wallMatT); wW.rotation.y=Math.PI/2; wW.position.set(x0,eaveH/2,cz); plantShell.add(wW);
+  const wE=wW.clone(); wE.position.set(x1,eaveH/2,cz); wE.rotation.y=-Math.PI/2; plantShell.add(wE);
+  // telhado em duas águas (cumeeira ao longo do eixo X)
+  const roofRun=halfZ, roofSlopeLen=Math.hypot(roofRun,ridgeH-eaveH);
+  const roofGeo=new THREE.PlaneGeometry(x1-x0,roofSlopeLen);
+  const roofA=new THREE.Mesh(roofGeo,matRoof); roofA.position.set(cx,(eaveH+ridgeH)/2,cz-roofRun/2);
+  roofA.rotation.x=-Math.atan2(ridgeH-eaveH,roofRun)-Math.PI/2; roofA.castShadow=true; plantShell.add(roofA);
+  const roofB=new THREE.Mesh(roofGeo,matRoof); roofB.position.set(cx,(eaveH+ridgeH)/2,cz+roofRun/2);
+  roofB.rotation.x=Math.atan2(ridgeH-eaveH,roofRun)+Math.PI/2; roofB.castShadow=true; plantShell.add(roofB);
+  const ridge=new THREE.Mesh(new THREE.BoxGeometry(x1-x0,0.35,0.35),matSteelCol); ridge.position.set(cx,ridgeH,cz); plantShell.add(ridge);
+  // tesouras (treliças) a cada vão de coluna
+  for(let i=0;i<=nx;i++){
+    const cxp=x0+(x1-x0)*i/nx;
+    const tr=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.18,halfZ*2*0.98),matSteelCol);
+    tr.position.set(cxp,eaveH,cz); plantShell.add(tr);
+  }
+  addLabel('Galpão industrial · Unidade Sacramento',cx,ridgeH+1.6,z0-1.5,'rgba(245,165,35,0.9)');
+
+  /* ---- props de pátio fabril: big bags, empilhadeiras, pá carregadeira ---- */
+  const matBag=new THREE.MeshStandardMaterial({color:0xcdb27a,roughness:0.95,metalness:0.0});
+  const propsZ=z1-3.2;
+  for(let i=0;i<4;i++){
+    const bag=new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.5,1.35,16),matBag);
+    bag.position.set(x1-4-i*1.5,0.68,propsZ); bag.castShadow=true; plantShell.add(bag);
+    const strap=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.5,0.06),matSteel(0xdedede,0.4,0.05));
+    [[-0.35,-0.35],[0.35,-0.35],[-0.35,0.35],[0.35,0.35]].forEach(([dx,dz])=>{ const s=strap.clone();
+      s.position.set(bag.position.x+dx,1.55,propsZ+dz); plantShell.add(s); });
+  }
+  addLabel('Big bags',x1-7,1.5,propsZ-1.3,'rgba(255,255,255,0.55)');
+
+  function buildForklift(px,pz,rot){
+    const grp=new THREE.Group(); grp.position.set(px,0,pz); grp.rotation.y=rot; plantShell.add(grp);
+    const body=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.95,0.95),matCast(0xd99a1f,0.6,0.4)); body.position.y=0.75; body.castShadow=true; grp.add(body);
+    const cab=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.85,0.85),matCast(0x2c333b,0.5,0.3)); cab.position.set(-0.45,1.4,0); grp.add(cab);
+    [[-0.6,-0.5],[-0.6,0.5],[0.6,-0.5],[0.6,0.5]].forEach(([dx,dz])=>{ const wh=new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.28,0.28,14),matCast(0x1a1a1a,0.9,0.1));
+      wh.rotation.x=Math.PI/2; wh.position.set(dx,0.28,dz); grp.add(wh); });
+    const mast=new THREE.Mesh(new THREE.BoxGeometry(0.1,1.7,0.7),matSteel(0x6b737c,0.7,0.4)); mast.position.set(1.0,0.95,0); grp.add(mast);
+    const forks=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.06,0.5),matSteel(0x6b737c,0.7,0.4)); forks.position.set(1.35,0.32,0); grp.add(forks);
+  }
+  buildForklift(x1-6,propsZ-3.6,Math.PI/2);
+  buildForklift(x1-9,propsZ-3.6,Math.PI/2+0.3);
+  addLabel('Empilhadeiras',x1-7.5,1.6,propsZ-4.6,'rgba(255,255,255,0.55)');
+
+  function buildWheelLoader(px,pz,rot){
+    const grp=new THREE.Group(); grp.position.set(px,0,pz); grp.rotation.y=rot; plantShell.add(grp);
+    const rear=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.1,1.3),matCast(0xe0b020,0.6,0.4)); rear.position.set(-0.9,0.85,0); rear.castShadow=true; grp.add(rear);
+    const cab=new THREE.Mesh(new THREE.BoxGeometry(1.0,1.0,1.1),matCast(0xdfe6ec,0.4,0.2)); cab.position.set(-0.4,1.75,0); grp.add(cab);
+    const front=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.6,1.2),matCast(0xe0b020,0.6,0.4)); front.position.set(0.6,0.7,0); grp.add(front);
+    const arm=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.16,0.18),matSteel(0x6b737c,0.7,0.4)); arm.position.set(1.1,1.1,0); grp.add(arm);
+    const bucket=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.55,1.3),matSteel(0x4a525a,0.75,0.45)); bucket.position.set(1.85,0.55,0); grp.add(bucket);
+    [[-1.4,0],[0.5,0]].forEach(([dx])=>{ const wh=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.42,0.4,16),matCast(0x1a1a1a,0.9,0.1));
+      wh.rotation.x=Math.PI/2; wh.position.set(dx,0.42,0); grp.add(wh); });
+  }
+  buildWheelLoader(x0+6,z1-3.5,-Math.PI/2);
+  addLabel('Pá carregadeira',x0+6,2.1,z1-5.5,'rgba(255,255,255,0.55)');
 }
 
 function updateBuckets(phase){
@@ -991,6 +1167,7 @@ function applyToggles(){
   if(K.bed)K.bed.visible=P.showMat; if(K.nod)K.nod.visible=P.showMat;
   if(K.flame)K.flame.visible=P.showFlame;
   if(K.rollers[0]&&K.rollers[0].parent)K.rollers[0].parent.visible=P.showStruct;
+  if(plantShell)plantShell.visible=P.showShell;
   labelGroup.visible=P.labels;
   renderer.shadowMap.enabled=P.shadows; renderer.shadowMap.needsUpdate=true;
   applyClip();
@@ -1104,9 +1281,20 @@ function animate(now){
     updateBuckets(KE.phase); }
 
   for(let i=0;i<K.rollers.length;i++) K.rollers[i].rotation.y=rollerSkew(i)*8; // ganho visual p/ steering ficar perceptível
-  const Fax=axialThrust(); K.walkVel=Fax/(Math.max(1,P.kilnWeightT)*1000*0.6);
-  K.walkMM=clamp((K.walkMM||0)+K.walkVel*dt*1000*0.05,-180,180);
-  if(K.spin) K.spin.position.x=clamp((K.walkMM||0)/1000,-0.18,0.18);
+  let Fax=axialThrust();
+  { // reação elástica dos 2 roletes de apoio axial (Base 2/pista central) perto do limite de passeio
+    const wNow=K.walkMM||0, soft=WALK_LIMIT_MM*0.88;
+    if(Math.abs(wNow)>soft){
+      const over=(Math.abs(wNow)-soft)/(WALK_LIMIT_MM-soft);
+      Fax+=-Math.sign(wNow)*over*over*Math.max(Math.abs(Fax),900)*2.2;
+      K.thrustContact=Math.sign(wNow);
+    } else K.thrustContact=0;
+  }
+  K.walkVel=Fax/(Math.max(1,P.kilnWeightT)*1000*0.6);
+  K.walkMM=clamp((K.walkMM||0)+K.walkVel*dt*1000*0.05,-WALK_LIMIT_MM,WALK_LIMIT_MM);
+  if(K.spin) K.spin.position.x=clamp((K.walkMM||0)/1000,-WALK_LIMIT_MM/1000,WALK_LIMIT_MM/1000);
+  if(K.thrustRollerPlus) K.thrustRollerPlus.material.emissiveIntensity=K.thrustContact>0?0.9:0.15;
+  if(K.thrustRollerMinus) K.thrustRollerMinus.material.emissiveIntensity=K.thrustContact<0?0.9:0.15;
   AI.wearAccum+=Math.abs(Fax/9.81)*dt/3600; // kgf·h acumulado (desgaste roletes/alianças)
   const Tdev=Tpeak()-GR[P.grade].Talvo; AI.thermalStress+=(Tdev*Tdev)*dt/3600*0.0008; // fadiga térmica do refratário
   K.passeioTick=(K.passeioTick||0)+1; if(K.passeioTick%6===0){ refreshPasseio(); refreshIA(); }
@@ -1147,13 +1335,18 @@ function buildNeedlesUI(){
     wrap.appendChild(h);
     for(let ri=0;ri<2;ri++){
       const row=document.createElement('div'); row.style.cssText='display:flex;gap:6px;margin-bottom:4px;align-items:center';
-      const lab=document.createElement('span'); lab.style.cssText='font-size:10px;color:var(--dim);width:56px'; lab.textContent='Rolete '+(ri+1);
+      const lado=ri===0?'Direita':'Esquerda';
+      const lab=document.createElement('span'); lab.style.cssText='font-size:10px;color:var(--dim);width:56px'; lab.textContent=lado;
       row.appendChild(lab);
       for(let mi=0;mi<2;mi++){
         const idx=(bi*2+ri)*2+mi;
+        /* numeração de campo (vista do maçarico p/ alimentação): frontal-dir=1, traseiro-dir=2, traseiro-esq=3, frontal-esq=4 */
+        const mancalNum=ri===0?(mi===0?1:2):(mi===0?4:3);
+        const posTxt=mi===0?'frontal':'traseiro';
         const inp=document.createElement('input'); inp.type='number'; inp.step='0.5'; inp.min='-10'; inp.max='10';
         inp.value=P.mancais[idx];
-        inp.title='Mancal '+(mi+1)+' · agulha (mm)';
+        inp.title='Mancal '+mancalNum+' · '+lado.toLowerCase()+' '+posTxt+' · agulha (mm)';
+        inp.placeholder='M'+mancalNum;
         inp.style.cssText='width:56px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:4px;font-size:11px';
         inp.addEventListener('input',()=>{P.mancais[idx]=parseFloat(inp.value)||0;});
         row.appendChild(inp);
@@ -1169,7 +1362,8 @@ function refreshPasseio(){
   const out=$('#passeio-out'); if(!out)return;
   const [trend,F]=walkTrend(), walk=K.walkMM||0;
   const dirTxt=Math.abs(walk)<2?'central':(walk>0?'deslocado p/ maçarico':'deslocado p/ alimentação');
-  out.innerHTML='Empuxo axial: <b>'+fmt(F/9.81,0)+' kgf</b> · '+trend+'<br>Posição axial acumulada: <b>'+fmt(walk,1).replace('.',',')+' mm</b> ('+dirTxt+')<br>Atrito casco/rolete: <b>'+fmt(frictionCoeff(),3).replace('.',',')+'</b>';
+  const contactTxt=K.thrustContact>0?' · <b style="color:var(--bad)">encostado no rolete de apoio (maçarico) — invertendo</b>':K.thrustContact<0?' · <b style="color:var(--bad)">encostado no rolete de apoio (alimentação) — invertendo</b>':'';
+  out.innerHTML='Empuxo axial: <b>'+fmt(F/9.81,0)+' kgf</b> · '+trend+'<br>Posição axial acumulada: <b>'+fmt(walk,1).replace('.',',')+' mm</b> ('+dirTxt+') de <b>±'+WALK_LIMIT_MM+' mm</b>'+contactTxt+'<br>Atrito casco/rolete: <b>'+fmt(frictionCoeff(),3).replace('.',',')+'</b>';
 }
 
 function refreshIA(){
@@ -1215,6 +1409,63 @@ $$('#chips .chip').forEach(b=>{const k=b.dataset.t;b.classList.toggle('off',!P[k
 $$('.views button').forEach(b=>b.addEventListener('click',()=>{$$('.views button').forEach(x=>x.classList.remove('on'));b.classList.add('on');curView=b.dataset.view;setView(curView);}));
 $$('#sectors button').forEach(b=>b.addEventListener('click',()=>{$$('#sectors button').forEach(x=>x.classList.remove('on'));b.classList.add('on');setSector(b.dataset.sec);}));
 $('#toggle').addEventListener('click',()=>$('#panel').classList.toggle('open'));
+
+/* ---- importação / exportação de arquivos ---- */
+function dl(filename,mime,content){
+  const blob=new Blob([content],{type:mime}), a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},200);
+}
+$('#imp-btn').addEventListener('click',()=>$('#imp-file').click());
+$('#imp-file').addEventListener('change',async(e)=>{
+  const f=e.target.files[0]; if(!f)return;
+  const st=$('#imp-status');
+  if(/\.json$/i.test(f.name)){
+    try{
+      const cfg=JSON.parse(await f.text());
+      Object.assign(P,cfg.P||{});
+      if(cfg.mancais) P.mancais=cfg.mancais;
+      ['s-T','s-inc','s-rpm','s-dr','s-feed','s-L','s-D','s-tD','s-rD','s-rL','s-kw'].forEach(id=>{
+        const map={'s-T':'Tset','s-inc':'incline','s-rpm':'rpm','s-dr':'draft','s-feed':'feed','s-L':'L','s-D':'D','s-tD':'tyreD','s-rD':'rollerD','s-rL':'rollerL','s-kw':'kilnWeightT'};
+        const k=map[id]; if(P[k]!==undefined && $('#'+id)){ $('#'+id).value=P[k]; }
+      });
+      buildAll(); buildNeedlesUI(); refreshAnalysis(); refreshIA();
+      st.textContent='✔ Configuração "'+f.name+'" importada.';
+    }catch(err){ st.textContent='✘ Falha ao importar JSON: '+err.message; }
+  } else if(/\.csv$/i.test(f.name)){
+    st.textContent='✔ Planilha "'+f.name+'" recebida (referência de controle — exiba/concilie manualmente com os parâmetros do painel).';
+  } else {
+    st.textContent='✔ Desenho/arquivo "'+f.name+'" recebido como referência visual (anexo informativo — não altera a geometria simulada).';
+  }
+  e.target.value='';
+});
+$('#exp-config').addEventListener('click',()=>{
+  const cfg={P:{Tset:P.Tset,incline:P.incline,rpm:P.rpm,draft:P.draft,feed:P.feed,L:P.L,D:P.D,tyreD:P.tyreD,rollerD:P.rollerD,rollerL:P.rollerL,kilnWeightT:P.kilnWeightT,grade:P.grade},mancais:P.mancais};
+  dl('forno-config-sacramento.json','application/json',JSON.stringify(cfg,null,2));
+});
+$('#exp-prod').addEventListener('click',()=>{
+  const rows=[['parametro','valor','unidade'],
+    ['producao_liquida_estimada',fmt(dailyProd(),2),'t/dia'],
+    ['refugo_previsto',fmt(scrapPct(),2),'%'],
+    ['oee',(oee()*100).toFixed(1),'%'],
+    ['disponibilidade',(availability()*100).toFixed(1),'%'],
+    ['desempenho',(performanceIdx()*100).toFixed(1),'%'],
+    ['qualidade',(quality()*100).toFixed(1),'%'],
+    ['desgaste_roletes_aliancas',(wearIndex()*100).toFixed(1),'%'],
+    ['fadiga_termica_refratario',(thermalStressIdx()*100).toFixed(1),'%'],
+    ['vida_util_refratario',refractoryLifePct().toFixed(1),'%'],
+    ['temp_estimada_mancais',bearingTempEst().toFixed(0),'°C'],
+    ['proxima_manutencao',daysToMaint(),'dias'],
+    ['passeio_axial_atual',fmt(K.walkMM||0,1),'mm'],
+    ['limite_passeio_axial',WALK_LIMIT_MM,'mm'],
+    ['empuxo_axial',fmt(axialThrust()/9.81,0),'kgf']];
+  dl('producao-manutencao-sacramento.csv','text/csv',rows.map(r=>r.join(';')).join('\n'));
+});
+$('#exp-curve').addEventListener('click',()=>{
+  const g=GR[P.grade], rows=[['posicao_relativa_0a1','temperatura_C']];
+  for(let i=0;i<=40;i++){ const t=i/40, T=Tpeak()*(0.35+0.65*Math.sin(Math.PI*Math.min(t*1.4,1))); rows.push([t.toFixed(3),Math.max(60,T).toFixed(0)]); }
+  dl('curva-de-queima-sacramento.csv','text/csv',rows.map(r=>r.join(';')).join('\n'));
+});
 
 /* ===================================================================
    11. INÍCIO
