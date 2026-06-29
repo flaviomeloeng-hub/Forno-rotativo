@@ -2980,6 +2980,7 @@ body[data-perfil="gestor"] [onclick*="reset" i]{display:none!important}
   <button class="btn" style="font-size:.66rem;padding:3px 9px" onclick="exportarBackup()">&#11015; Exportar Backup</button>
   <button class="btn" style="font-size:.66rem;padding:3px 9px" onclick="document.getElementById('binput').click()">&#11014; Importar Backup</button>
   <button class="btn" id="bkp-btn" style="font-size:.66rem;padding:3px 9px;border-color:var(--glow)" onclick="abrirBackupAuto()" title="Conecta uma PASTA no PC (Chrome/Edge): o sistema salva o backup JSON automaticamente a cada alteracao. No login, oferece carregar o backup da pasta.">&#128193; Backup em pasta</button>
+  <button class="btn" id="bkp-off-btn" style="display:none;font-size:.66rem;padding:3px 9px;border-color:var(--bad)" onclick="desligarBackupAuto()" title="Desliga o backup automatico em pasta (o backup manual continua disponivel).">&#9211; Desligar backup auto</button>
   <span id="bkp-status" style="font-size:.6rem;color:var(--text3);font-family:var(--mono)"></span>
   <button class="btn" style="font-size:.66rem;padding:3px 9px" onclick="limparDados()">&#128465; Limpar</button>
 </div>
@@ -5071,7 +5072,17 @@ function _bkpIDB(cb){ try{ var rq=indexedDB.open('dn2_bkp',1); rq.onupgradeneede
 function _bkpSalvarHandle(h){ _bkpIDB(function(db){ if(!db)return; try{ db.transaction('h','readwrite').objectStore('h').put(h,'dir'); }catch(e){} }); }
 function _bkpLerHandle(cb){ _bkpIDB(function(db){ if(!db){cb(null);return;} try{ var g=db.transaction('h','readonly').objectStore('h').get('dir'); g.onsuccess=function(){ cb(g.result||null); }; g.onerror=function(){ cb(null); }; }catch(e){ cb(null); } }); }
 async function _bkpPerm(h, escrever){ try{ if(!h||!h.queryPermission) return 'granted'; var opt={mode:escrever?'readwrite':'read'}; var p=await h.queryPermission(opt); if(p==='granted')return p; p=await h.requestPermission(opt); return p; }catch(e){ return 'denied'; } }
-function _bkpAtualizaUI(){ var b=document.getElementById('bkp-btn'); if(b) b.innerHTML=(_bkpDirHandle?'📁 Backup auto: ON':'📁 Backup em pasta'); var s=document.getElementById('bkp-status'); if(s&&!_bkpDirHandle) s.textContent=''; }
+function _bkpAtualizaUI(){ var b=document.getElementById('bkp-btn'); if(b) b.innerHTML=(_bkpDirHandle?'📁 Backup auto: ON':'📁 Backup em pasta'); var s=document.getElementById('bkp-status'); if(s&&!_bkpDirHandle) s.textContent=''; var o=document.getElementById('bkp-off-btn'); if(o) o.style.display=_bkpDirHandle?'inline-flex':'none'; }
+function desligarBackupAuto(){
+  if(!_bkpDirHandle){ toast('Backup automatico ja esta desligado.'); return; }
+  if(!confirm('Desligar o backup automatico em pasta?\n\nO backup manual (Exportar/Importar Backup) continua disponivel normalmente.')) return;
+  if(_bkpTimer){ clearTimeout(_bkpTimer); _bkpTimer=null; }
+  _bkpDirHandle=null;
+  _bkpSalvarHandle(null);
+  try{ localStorage.removeItem('dn2_bkp_on'); }catch(e){}
+  _bkpAtualizaUI();
+  toast('Backup automatico desligado.');
+}
 async function conectarPastaBackup(){
   if(!_bkpSuportado){ toast('Use o Chrome/Edge no PC para a pasta automatica (no celular nao ha suporte). O backup manual continua disponivel.', true); return; }
   try{
