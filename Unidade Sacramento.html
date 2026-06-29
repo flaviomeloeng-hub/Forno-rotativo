@@ -14059,7 +14059,7 @@ function renderForno(){
     + '<button class="btn" id="forno-exit-btn" onclick="swTab(layoutMode===\'enxuto\'?\'menu\':\'overview\')" style="display:none;border-color:var(--glow2)">&#8592; Voltar ao painel</button>'
     + '</div>'
     + '<div class="hint-forno" style="font-size:.72rem;color:var(--text3);margin:4px 0 10px;line-height:1.5">Simulacao 3D de processo (grades 45/70/90% Al&#8322;O&#8323;), estrutura mecanica (alianças, roletes, mancais) e modulo de IA de Producao &amp; Manutencao (OEE, refugo, desgaste, passeio axial).</div>'
-    + '<iframe id="frm-forno" title="Forno Rotativo - Unidade Sacramento" style="width:100%;height:82vh;border:1px solid var(--border);border-radius:12px;background:#0a0e14" sandbox="allow-scripts allow-same-origin allow-pointer-lock"></iframe>';
+    + '<iframe id="frm-forno" title="Forno Rotativo - Unidade Sacramento" style="width:100%;height:82vh;border:1px solid var(--border);border-radius:12px;background:#0a0e14" sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-downloads allow-popups allow-modals"></iframe>';
   var f = document.getElementById('frm-forno');
   f.srcdoc = _fornoB64ToUtf8(FORNO_HTML_B64);
   v.setAttribute('data-loaded','1');
