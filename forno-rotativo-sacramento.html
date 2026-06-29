@@ -200,6 +200,10 @@
       <button data-view="front">Frente (perfil)</button>
       <button data-view="top">Topo</button>
     </div>
+    <div class="views">
+      <button data-view="inkiln">📷 Interior · Forno</button>
+      <button data-view="incooler">📷 Interior · Resfriador</button>
+    </div>
     <div class="sectors" id="sectors">
       <button data-sec="kiln" class="on">Forno (Sacramento)</button>
     </div>
@@ -1008,6 +1012,22 @@ function setView(v){
   else if(v==='front'){cam.tθ=0.001;cam.tφ=1.46;}
   else if(v==='top'){cam.tθ=Math.PI/2;cam.tφ=0.06;}
 }
+/* ---- visão interna (câmera dentro do tubo, usando o corte para revelar o interior) ---- */
+function enterInterior(sec){
+  const groups={feed:feedSector,kiln:kilnSector,cooler:coolerSector,transport:transportSector};
+  Object.entries(groups).forEach(([k,g])=>g.visible=(k===sec));
+  chuteGroup.visible=(sec==='kiln'||sec==='cooler');
+  curSector=sec;
+  $$('#sectors button').forEach(x=>x.classList.toggle('on',x.dataset.sec===sec));
+  if(!P.cutaway){ P.cutaway=true; applyToggles(); const cb=document.querySelector('[data-t="cutaway"]'); if(cb) cb.classList.remove('off'); }
+  const Lref=(sec==='kiln')?P.L:Math.max(8,P.L*0.52);
+  const Rref=(sec==='kiln')?R:Math.max(0.55,R*0.62);
+  const grp=(sec==='kiln')?tilt:coolerTilt;
+  const wp=new THREE.Vector3(-Lref*0.5+Lref*0.32,0,0);
+  grp.updateMatrixWorld(true); wp.applyMatrix4(grp.matrixWorld);
+  cam.target.copy(wp);
+  cam.tr=Math.max(Rref*1.5,2.2); cam.tθ=1.15; cam.tφ=1.5;
+}
 function sectorBox(obj){
   const box=new THREE.Box3();
   obj.traverse(o=>{
@@ -1305,7 +1325,8 @@ $('#calib-reset').addEventListener('click',()=>{
 });
 refreshCalib();
 $$('#chips .chip').forEach(b=>{const k=b.dataset.t;b.classList.toggle('off',!P[k]);b.addEventListener('click',()=>{P[k]=!P[k];b.classList.toggle('off',!P[k]);applyToggles();});});
-$$('.views button').forEach(b=>b.addEventListener('click',()=>{$$('.views button').forEach(x=>x.classList.remove('on'));b.classList.add('on');curView=b.dataset.view;setView(curView);}));
+$$('.views button').forEach(b=>b.addEventListener('click',()=>{$$('.views button').forEach(x=>x.classList.remove('on'));b.classList.add('on');curView=b.dataset.view;
+  if(curView==='inkiln')enterInterior('kiln'); else if(curView==='incooler')enterInterior('cooler'); else setView(curView);}));
 $$('#sectors button').forEach(b=>b.addEventListener('click',()=>{$$('#sectors button').forEach(x=>x.classList.remove('on'));b.classList.add('on');setSector(b.dataset.sec);}));
 $('#toggle').addEventListener('click',()=>$('#panel').classList.toggle('open'));
 
