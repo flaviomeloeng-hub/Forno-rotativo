@@ -226,6 +226,7 @@
       <button class="chip" data-t="labels">🏷 Rótulos</button>
       <button class="chip" data-t="shadows">☀︎ Sombras</button>
       <button class="chip" data-t="spin">↻ Girar</button>
+      <button class="chip" data-t="heatmap">🌡 Mapa de carga</button>
     </div>
   </div>
 
@@ -257,7 +258,7 @@ const THREE=window.THREE;
 const P = {
   grade:'70', Tset:1500, incline:3.0, rpm:2.0, draft:70, feed:8.0,
   L:30, D:2.4, tyreD:2.8, rollerD:1.1, rollerL:0.9,
-  cutaway:true, showMat:true, showFlame:true, showStruct:true, labels:true, shadows:true, spin:true,
+  cutaway:true, showMat:true, showFlame:true, showStruct:true, labels:true, shadows:true, spin:true, heatmap:false,
   kilnWeightT:80, mancais:new Array(12).fill(0)
 };
 // Janelas de queima INDICATIVAS — calibrar com dados reais da Togni
@@ -495,6 +496,30 @@ function makeLabel(text,accent){
 }
 function addLabel(text,x,y,z,accent){ const sp=makeLabel(text,accent); sp.position.set(x,y,z); labelGroup.add(sp); K.labels.push(sp); }
 
+/* ---- mapa de carga/reação (ilustrativo, verde→amarelo→vermelho) ---- */
+function heatColor(v){
+  v=clamp(v,0,1);
+  const lerp=(a,b,t)=>[Math.round(a[0]+(b[0]-a[0])*t),Math.round(a[1]+(b[1]-a[1])*t),Math.round(a[2]+(b[2]-a[2])*t)];
+  return v<0.5?lerp([46,204,113],[245,166,35],v/0.5):lerp([245,166,35],[214,48,49],(v-0.5)/0.5);
+}
+function makeHeatTexture(intensityFn){
+  const c=document.createElement('canvas'); c.width=4; c.height=128;
+  const x=c.getContext('2d');
+  for(let i=0;i<c.height;i++){ const t=i/(c.height-1); const [r,g,b]=heatColor(intensityFn(t));
+    x.fillStyle='rgb('+r+','+g+','+b+')'; x.fillRect(0,i,c.width,1); }
+  const tex=new THREE.CanvasTexture(c); tex.wrapS=THREE.RepeatWrapping; tex.wrapT=THREE.ClampToEdgeWrapping; tex.needsUpdate=true;
+  return tex;
+}
+function kilnHeatIntensity(t){
+  const hh=t<0.82?clamp((t-0.06)/0.76,0,1):clamp(1-(t-0.82)/0.18*0.22,0,1);
+  const thermal=hh*thermalStressIdx();
+  let mech=0;
+  baseXs.forEach(bx=>{ const bt=0.5+bx/P.L, d=Math.abs(t-bt); mech=Math.max(mech,Math.exp(-Math.pow(d/0.06,2))); });
+  mech*=wearIndex();
+  return clamp(thermal*0.75+mech*0.65,0,1);
+}
+function coolerHeatIntensity(t){ return clamp(Math.exp(-t*2.4)*thermalStressIdx()*0.9+0.06,0,1); }
+
 function buildAll(){
   while(tilt.children.length){ const c=tilt.children.pop(); if(c!==labelGroup) disp(c); }
   tilt.add(labelGroup);
@@ -522,6 +547,9 @@ function buildAll(){
   const band=new THREE.Mesh(new THREE.CylinderGeometry(R*1.006,R*1.006,L*0.045,56,1,true),
     new THREE.MeshStandardMaterial({color:0xf5a623,metalness:0.3,roughness:0.55,clippingPlanes:[clip]}));
   band.rotation.z=Math.PI/2; band.position.x=-L*0.16; spin.add(band); K.clipMeshes.push(band);
+  const heatMat=new THREE.MeshBasicMaterial({map:makeHeatTexture(kilnHeatIntensity),transparent:true,opacity:0.55,side:THREE.DoubleSide,depthWrite:false,clippingPlanes:[clip]});
+  const heatMesh=new THREE.Mesh(new THREE.CylinderGeometry(R*1.012,R*1.012,L,56,1,true),heatMat);
+  heatMesh.rotation.z=Math.PI/2; heatMesh.visible=P.heatmap; spin.add(heatMesh); K.clipMeshes.push(heatMesh); K.heatKiln=heatMesh;
 
   /* ---- anéis de rolamento (alianças/pistas) ---- */
   // numeração das bases conforme a operação: base 1 = lado do maçarico, 2 = centro, 3 = entrada
@@ -789,6 +817,9 @@ function buildCooler(){
   shell.rotation.z=Math.PI/2; shell.castShadow=true; shell.receiveShadow=true; spin.add(shell); K.clipMeshes.push(shell);
   for(let i=0;i<5;i++){ const rg=new THREE.Mesh(new THREE.TorusGeometry(cR*1.004,cR*0.018,8,40),matSteel(0x767f88,0.85,0.5));
     rg.rotation.y=Math.PI/2; rg.position.x=-cL/2+cL*(i+0.5)/5; rg.material.clippingPlanes=[clip]; spin.add(rg); K.clipMeshes.push(rg); }
+  const cHeatMat=new THREE.MeshBasicMaterial({map:makeHeatTexture(coolerHeatIntensity),transparent:true,opacity:0.55,side:THREE.DoubleSide,depthWrite:false,clippingPlanes:[clip]});
+  const cHeatMesh=new THREE.Mesh(new THREE.CylinderGeometry(cR*1.012,cR*1.012,cL,48,1,true),cHeatMat);
+  cHeatMesh.rotation.z=Math.PI/2; cHeatMesh.visible=P.heatmap; spin.add(cHeatMesh); K.clipMeshes.push(cHeatMesh); K.heatCooler=cHeatMesh;
 
   cBaseXs.forEach((bx,i)=>{
     const tyre=new THREE.Mesh(new THREE.CylinderGeometry(tyreOR,tyreOR,tyreW,40,1),matSteel(0xa6aeb6,0.95,0.28));
@@ -1098,8 +1129,14 @@ function applyToggles(){
   if(K.flame)K.flame.visible=P.showFlame;
   if(K.rollers[0]&&K.rollers[0].parent)K.rollers[0].parent.visible=P.showStruct;
   labelGroup.visible=P.labels;
+  if(K.heatKiln)K.heatKiln.visible=P.heatmap;
+  if(K.heatCooler)K.heatCooler.visible=P.heatmap;
   renderer.shadowMap.enabled=P.shadows; renderer.shadowMap.needsUpdate=true;
   applyClip();
+}
+function refreshHeatmap(){
+  if(K.heatKiln){ K.heatKiln.material.map.dispose(); K.heatKiln.material.map=makeHeatTexture(kilnHeatIntensity); K.heatKiln.material.needsUpdate=true; }
+  if(K.heatCooler){ K.heatCooler.material.map.dispose(); K.heatCooler.material.map=makeHeatTexture(coolerHeatIntensity); K.heatCooler.material.needsUpdate=true; }
 }
 
 /* ===================================================================
@@ -1128,6 +1165,7 @@ function drawProfile(){
   x.fillStyle='rgba(255,255,255,0.35)';x.fillText('entrada',4,h-3);x.textAlign='right';x.fillText('descarga',w-4,h-3);x.textAlign='left';
 }
 function refreshAnalysis(){
+  refreshHeatmap();
   const g=GR[P.grade],tau=residence(),v=axialSpeed(),Tp=Tpeak(),q=quality(),f=fillPct();
   elOut.innerHTML=`
     <div class="r"><span>Grade alvo</span><b>${g.name.split(' ').slice(-2).join(' ')}</b></div>
