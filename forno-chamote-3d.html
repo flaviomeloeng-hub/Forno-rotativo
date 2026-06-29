@@ -167,6 +167,16 @@
   </div>
 
   <div class="sec">
+    <h2>IA · Produção &amp; Manutenção</h2>
+    <div class="qbar"><i id="oeebar"></i></div>
+    <div class="status" id="oee-status">—</div>
+    <div class="out" id="ia-out"></div>
+    <div class="hint" id="ia-recs" style="margin-top:6px"></div>
+    <button class="btn-full" id="ia-reset" style="margin-top:8px;background:rgba(255,255,255,.08);color:var(--txt)">Zerar acumulados de desgaste/fadiga</button>
+    <div class="note">Motor de regras sobre o modelo físico (queima + passeio axial), combinando heurísticas de literatura de fornos rotativos (desgaste de roletes/alianças ∝ empuxo axial acumulado; fadiga térmica do refratário ∝ desvio² da janela de queima). Indicativo — não substitui instrumentação real (termografia de casco, sensores de vibração/temperatura de mancal).</div>
+  </div>
+
+  <div class="sec">
     <h2>Visualização</h2>
     <div class="views">
       <button data-view="persp">Perspectiva</button>
@@ -280,6 +290,51 @@ function axialThrust(){ // N, positivo = empurra p/ lado do queimador (+x)
 function walkTrend(){ const F=axialThrust();
   if(Math.abs(F)<40) return ['Equilibrado',0];
   return F>0?['Andando p/ lado do queimador',F]:['Andando p/ lado da alimentação',F];
+}
+
+/* ---- IA DE PRODUÇÃO & MANUTENÇÃO (motor de regras sobre o modelo físico) ----
+   Combina os modelos de queima e passeio axial já existentes com heurísticas
+   de literatura de fornos rotativos: desgaste de roletes/alianças proporcional
+   ao empuxo axial acumulado (kgf·h) e ao desalinhamento instantâneo; fadiga
+   térmica do refratário proporcional ao desvio² da temperatura em relação à
+   janela de queima, acumulado no tempo (choque térmico/ciclagem); refugo
+   estimado a partir do déficit de qualidade de queima (T×tempo) somado à
+   penalidade de instabilidade mecânica (passeio/empuxo excessivos).
+   Indicativo — não substitui instrumentação real de processo. */
+const AI={wearAccum:0,thermalStress:0};
+function scrapPct(){
+  const q=quality(); let s=(1-q)*14;
+  const [,F]=walkTrend(), Fkgf=Math.abs(F)/9.81, walk=Math.abs(K.walkMM||0);
+  if(walk>90) s+=(walk-90)*0.06;
+  if(Fkgf>140) s+=(Fkgf-140)*0.025;
+  return clamp(s,0,38);
+}
+function wearIndex(){ return clamp(AI.wearAccum/(Math.max(20,P.kilnWeightT)*55),0,1); }
+function thermalStressIdx(){ return clamp(AI.thermalStress/4500,0,1); }
+function bearingTempEst(){
+  let maxF=0; for(let i=0;i<6;i++){ const f=Math.abs(rollerSkew(i))*((Math.max(1,P.kilnWeightT)*1000*9.81)/6)*frictionCoeff(); if(f>maxF)maxF=f; }
+  return clamp(38+(maxF/9.81)*0.09+wearIndex()*18,32,95);
+}
+function availability(){ return clamp(1-wearIndex()*0.32-thermalStressIdx()*0.18,0.55,0.99); }
+function performanceIdx(){ return clamp(1-Math.abs(K.walkMM||0)/180*0.15,0.82,1); }
+function oee(){ return availability()*performanceIdx()*quality(); }
+function daysToMaint(){ return Math.round(clamp(60*(1-wearIndex())*(1-thermalStressIdx()*0.4),2,60)); }
+function refractoryLifePct(){ return clamp(100-thermalStressIdx()*100,0,100); }
+function dailyProd(){ return P.feed*24*availability()*(1-scrapPct()/100); }
+function worstRoller(){ let bi=0,best=-1; for(let i=0;i<6;i++){ const s=Math.abs(rollerSkew(i)); if(s>best){best=s;bi=i;} } return bi; }
+function aiRecommendations(){
+  const recs=[]; const [trend,F]=walkTrend(), Fkgf=F/9.81, baseNum=[3,2,1];
+  if(Math.abs(Fkgf)>=40){
+    const bi=worstRoller(), bn=baseNum[Math.floor(bi/2)], rolNum=(bi%2)+1;
+    const m1=P.mancais[bi*2]||0, m2=P.mancais[bi*2+1]||0, corr=Math.abs((m1-m2)/2);
+    recs.push(`Passeio ${trend.toLowerCase()} (${fmt(Math.abs(Fkgf),0)} kgf). Maior contribuinte: Base ${bn} · Rolete ${rolNum}. Reduza a diferença entre os 2 mancais em ≈ ${fmt(corr,1).replace('.',',')} mm para reequilibrar.`);
+  } else recs.push('Passeio equilibrado — manter regulagem atual das agulhas.');
+  if(wearIndex()>0.6) recs.push('Desgaste acumulado de roletes/alianças elevado — programar inspeção de contato e realinhamento.');
+  if(thermalStressIdx()>0.5) recs.push('Fadiga térmica do refratário acima do esperado — revisar curva de queima e evitar picos acima da janela.');
+  if(bearingTempEst()>78) recs.push('Temperatura estimada dos mancais elevada — verificar lubrificação/refrigeração.');
+  if(scrapPct()>12) recs.push('Refugo previsto elevado — ajustar temperatura/rotação para dentro da janela de queima.');
+  if(wearIndex()<0.3 && thermalStressIdx()<0.3 && scrapPct()<8 && Math.abs(Fkgf)<40) recs.push('Operação dentro dos parâmetros ideais — sem ações adicionais recomendadas.');
+  return recs;
 }
 
 /* ===================================================================
@@ -1052,7 +1107,9 @@ function animate(now){
   const Fax=axialThrust(); K.walkVel=Fax/(Math.max(1,P.kilnWeightT)*1000*0.6);
   K.walkMM=clamp((K.walkMM||0)+K.walkVel*dt*1000*0.05,-180,180);
   if(K.spin) K.spin.position.x=clamp((K.walkMM||0)/1000,-0.18,0.18);
-  K.passeioTick=(K.passeioTick||0)+1; if(K.passeioTick%6===0) refreshPasseio();
+  AI.wearAccum+=Math.abs(Fax/9.81)*dt/3600; // kgf·h acumulado (desgaste roletes/alianças)
+  const Tdev=Tpeak()-GR[P.grade].Talvo; AI.thermalStress+=(Tdev*Tdev)*dt/3600*0.0008; // fadiga térmica do refratário
+  K.passeioTick=(K.passeioTick||0)+1; if(K.passeioTick%6===0){ refreshPasseio(); refreshIA(); }
 
   camUpdate(); renderer.render(scene,camera); requestAnimationFrame(animate);
 }
@@ -1115,6 +1172,26 @@ function refreshPasseio(){
   out.innerHTML='Empuxo axial: <b>'+fmt(F/9.81,0)+' kgf</b> · '+trend+'<br>Posição axial acumulada: <b>'+fmt(walk,1).replace('.',',')+' mm</b> ('+dirTxt+')<br>Atrito casco/rolete: <b>'+fmt(frictionCoeff(),3).replace('.',',')+'</b>';
 }
 
+function refreshIA(){
+  const elB=$('#oeebar'),elSt=$('#oee-status'),elO=$('#ia-out'),elR=$('#ia-recs'); if(!elB)return;
+  const oeeV=oee(), avail=availability(), perf=performanceIdx(), q=quality();
+  elB.style.width=(oeeV*100).toFixed(0)+'%';
+  const cls=oeeV>=0.75?'good':oeeV>=0.5?'warn':'bad', cm={good:'var(--good)',warn:'var(--warn)',bad:'var(--bad)'};
+  elB.style.background=cm[cls];
+  elSt.textContent=`OEE ${(oeeV*100).toFixed(0)}% · Disp. ${(avail*100).toFixed(0)}% · Perf. ${(perf*100).toFixed(0)}% · Qual. ${(q*100).toFixed(0)}%`;
+  elSt.style.color=cm[cls];
+  elO.innerHTML=`
+    <div class="r"><span>Produção líquida estimada</span><b>${fmt(dailyProd(),1)} t/dia</b></div>
+    <div class="r"><span>Refugo previsto</span><b>${fmt(scrapPct(),1).replace('.',',')} %</b></div>
+    <div class="r"><span>Desgaste roletes/alianças</span><b>${fmt(wearIndex()*100,0)} %</b></div>
+    <div class="r"><span>Fadiga térmica do refratário</span><b>${fmt(thermalStressIdx()*100,0)} %</b></div>
+    <div class="r"><span>Vida útil restante (refratário)</span><b>${fmt(refractoryLifePct(),0)} %</b></div>
+    <div class="r"><span>Temp. estimada dos mancais</span><b>${fmt(bearingTempEst(),0)} °C</b></div>
+    <div class="r"><span>Próxima manutenção recomendada</span><b>${daysToMaint()} dias</b></div>`;
+  elR.innerHTML=aiRecommendations().map(r=>'• '+r).join('<br>');
+}
+$('#ia-reset').addEventListener('click',()=>{AI.wearAccum=0;AI.thermalStress=0;refreshIA();});
+
 $$('#grades button').forEach(b=>b.addEventListener('click',()=>{$$('#grades button').forEach(x=>x.classList.remove('on'));b.classList.add('on');P.grade=b.dataset.g;refreshAnalysis();refreshCalib();}));
 
 /* ---- calibração editável das grades (GR) ---- */
@@ -1142,7 +1219,7 @@ $('#toggle').addEventListener('click',()=>$('#panel').classList.toggle('open'));
 /* ===================================================================
    11. INÍCIO
 =================================================================== */
-buildAll(); resize(); setView('persp'); setSector('all'); refreshAnalysis();
+buildAll(); resize(); setView('persp'); setSector('all'); refreshAnalysis(); refreshIA();
 L0.style.display='none'; requestAnimationFrame(animate);
 })();
 </script>
