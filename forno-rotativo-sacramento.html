@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-<title>Forno Rotativo · Unidade Sacramento</title>
+<title>Unidade Sacramento · Forno Rotativo · Togni</title>
 <style>
   :root{
     --bg:#090c11; --panel:rgba(14,19,26,.88); --line:rgba(255,255,255,.09);
@@ -83,6 +83,19 @@
     border-radius:11px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;margin-top:9px}
   .btn-ghost:hover{background:rgba(255,255,255,.1)}
   .loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:50;color:var(--dim);font-size:13px;letter-spacing:.4px}
+  #oval-modal{position:fixed;inset:0;z-index:60;background:rgba(5,8,12,.92);backdrop-filter:blur(6px);display:none;overflow:auto;padding:18px}
+  #oval-modal.open{display:block}
+  #oval-modal .ov-card{background:var(--panel);border:1px solid var(--line);border-radius:15px;max-width:1180px;margin:0 auto;padding:18px}
+  #oval-modal .ov-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  #oval-modal .ov-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  #oval-modal .ov-grid canvas{width:100%;height:220px;display:block;background:rgba(255,255,255,.03);border-radius:10px}
+  #oval-modal .ov-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px}
+  #oval-modal .ov-kpi{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  #oval-modal .ov-kpi b{display:block;font-size:16px;margin-top:2px}
+  #oval-modal .ov-geo{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:rgba(255,255,255,.03);border-radius:10px;padding:10px;margin-bottom:6px}
+  #oval-modal .ov-geo label{font-size:11px;color:var(--dim);display:flex;flex-direction:column;gap:3px}
+  #oval-modal .ov-geo input{width:90px}
+  @media (max-width:900px){ #oval-modal .ov-grid{grid-template-columns:repeat(2,1fr)} }
   @media (max-width:780px){
     #toggle{display:block}
     #panel{transform:translateX(110%);transition:transform .3s ease;width:min(330px,93vw)}
@@ -93,8 +106,8 @@
 <body>
 <canvas id="c"></canvas>
 <div class="title">
-  <h1>Forno <span class="a">Rotativo</span></h1>
-  <p>Unidade Sacramento · modelo isolado do forno · simulação 3D de processo e estrutura</p>
+  <h1>Unidade <span class="a">Sacramento</span></h1>
+  <p>Forno Rotativo · Produção &amp; Manutenção · chamote Al₂O₃ · Poços de Caldas</p>
 </div>
 <button id="toggle" aria-label="Controles">⚙︎</button>
 
@@ -183,7 +196,7 @@
   </div>
 
   <div class="sec">
-    <h2>IA · Produção &amp; Manutenção <em>Unidade Sacramento</em></h2>
+    <h2>IA · Produção &amp; Manutenção <em>Módulo · Forno Rotativo</em></h2>
     <div class="qbar"><i id="oeebar"></i></div>
     <div class="status" id="oee-status">—</div>
     <div class="out" id="ia-out"></div>
@@ -204,13 +217,14 @@
 
   <div class="sec">
     <h2>Ovalização do casco (polar)</h2>
-    <div class="hint">Deformação radial ilustrativa do casco nas seções de apoio (alianças/roletes) e no resfriador — amplitude exagerada para visualização, escala em mm ao centro de cada gráfico.</div>
+    <div class="hint">A <b>curva</b> de cada gráfico é o contorno do casco visto de frente (360°) na seção indicada; o círculo cinza pontilhado é a referência circular (sem deformação). <b>Onde a curva colore para vermelho</b>, é o ângulo de maior <b>reação de apoio</b> (peso concentrado sobre roletes/alianças naquela seção) — ou seja, onde o casco mais ovaliza/flexiona a cada giro. Amplitude exagerada propositalmente para visualização; escala em mm indicada ao centro de cada gráfico.</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
-      <div style="flex:1;min-width:90px"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Base 3 · entrada</div><canvas id="oval-base1" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
-      <div style="flex:1;min-width:90px"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Base 2 · centro</div><canvas id="oval-base2" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
-      <div style="flex:1;min-width:90px"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Base 1 · maçarico</div><canvas id="oval-base3" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
-      <div style="flex:1;min-width:90px"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Resfriador</div><canvas id="oval-cooler" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
+      <div style="flex:1;min-width:90px;cursor:zoom-in" data-oval-zoom="oval-base1" data-oval-label="Base 3 · entrada"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Base 3 · entrada 🔍</div><canvas id="oval-base1" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
+      <div style="flex:1;min-width:90px;cursor:zoom-in" data-oval-zoom="oval-base2" data-oval-label="Base 2 · centro"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Base 2 · centro 🔍</div><canvas id="oval-base2" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
+      <div style="flex:1;min-width:90px;cursor:zoom-in" data-oval-zoom="oval-base3" data-oval-label="Base 1 · maçarico"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Base 1 · maçarico 🔍</div><canvas id="oval-base3" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
+      <div style="flex:1;min-width:90px;cursor:zoom-in" data-oval-zoom="oval-cooler" data-oval-label="Resfriador"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Resfriador 🔍</div><canvas id="oval-cooler" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
     </div>
+    <div class="hint" style="margin-top:6px">Clique em qualquer diagrama para abri-lo em tela cheia com todos os KPIs do forno lado a lado.</div>
   </div>
 
   <div class="sec">
@@ -226,18 +240,30 @@
       <button data-view="incooler">📷 Interior · Resfriador</button>
     </div>
     <div class="sectors" id="sectors">
-      <button data-sec="kiln" class="on">Forno (Sacramento)</button>
+      <button data-sec="all" class="on">Planta completa</button>
+      <button data-sec="feed">Alimentação</button>
+      <button data-sec="kiln">Forno</button>
+      <button data-sec="cooler">Resfriador</button>
+      <button data-sec="transport">Elevador+Baias</button>
     </div>
-    <div class="hint">Modelo isolado do forno rotativo — Unidade Sacramento. Para o sistema completo (alimentação, resfriador, elevador, baias e os módulos de Produção &amp; Manutenção), use o arquivo <b>unidade-sacramento.html</b>.</div>
     <div class="chips" id="chips">
       <button class="chip" data-t="cutaway">✂︎ Corte</button>
       <button class="chip" data-t="showMat">⛏ Material</button>
       <button class="chip" data-t="showFlame">🔥 Chama</button>
       <button class="chip" data-t="showStruct">🏗 Estrutura</button>
+      <button class="chip" data-t="showShell">🏭 Galpão</button>
       <button class="chip" data-t="labels">🏷 Rótulos</button>
       <button class="chip" data-t="shadows">☀︎ Sombras</button>
       <button class="chip" data-t="spin">↻ Girar</button>
       <button class="chip" data-t="heatmap">🌡 Mapa de carga</button>
+      <button class="chip" data-t="axis">⊢ Linha de centro</button>
+    </div>
+    <div id="heat-legend" class="hint" style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-weight:600;color:var(--text2)">Legenda do mapa de carga:</span>
+      <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:rgb(46,204,113);display:inline-block"></span>baixa reação de apoio / baixa fadiga térmica</span>
+      <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:rgb(245,166,35);display:inline-block"></span>moderada — acompanhar</span>
+      <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:rgb(214,48,49);display:inline-block"></span><b>alta — maior esforço/reação nos pontos de apoio</b> (alianças, roletes, mancais) e/ou maior fadiga térmica do refratário</span>
+      <span style="flex-basis:100%">A faixa <b>vermelha</b> indica onde o casco está submetido à <b>maior reação de apoio</b> (peso do forno + carga do leito de material concentrada sobre roletes/alianças) combinada à fadiga térmica — são os pontos prioritários de inspeção mecânica e refratária.</span>
     </div>
   </div>
 
@@ -250,6 +276,50 @@
     <button class="btn-full" id="batch">Soltar lote de teste ▸</button>
     <div id="log"></div>
     <div class="note" id="note"></div>
+  </div>
+
+  <div class="sec">
+    <h2>Importar / Exportar</h2>
+    <div class="hint">Importe o desenho do forno (imagem/PDF como referência visual), dimensões/planilhas (JSON ou CSV) ou um arquivo de configuração salvo anteriormente.</div>
+    <input type="file" id="imp-file" accept=".json,.csv,.pdf,.png,.jpg,.jpeg" style="display:none">
+    <button class="btn-ghost" id="imp-btn">📂 Importar desenho/dimensões/planilha…</button>
+    <div class="hint" id="imp-status"></div>
+    <div id="imp-preview" style="display:none;margin:8px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.03)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:11px;color:var(--dim)">
+        <span id="imp-preview-name">referência</span>
+        <button class="chip" id="imp-preview-clear" style="padding:2px 8px">✕ Remover</button>
+      </div>
+      <div id="imp-preview-body" style="max-height:260px;overflow:auto;text-align:center;background:#0b0e13"></div>
+    </div>
+    <button class="btn-ghost" id="exp-config">💾 Exportar configuração do forno (.json)</button>
+    <button class="btn-ghost" id="exp-prod">📊 Exportar dados de produção/manutenção (.csv)</button>
+    <button class="btn-ghost" id="exp-curve">🔥 Exportar curva de queima (.csv)</button>
+    <button class="btn-ghost" id="exp-xls">📈 Exportar planilha completa (Excel)</button>
+    <button class="btn-ghost" id="exp-report">🖨 Relatório completo (imprimir/PDF)</button>
+    <button class="btn-ghost" id="exp-fichas">🛠 Fichas de manutenção (imprimir/PDF)</button>
+  </div>
+</div>
+
+<div id="oval-modal">
+  <div class="ov-card">
+    <div class="ov-head">
+      <div><h2 style="margin:0">📐 Ovalização do casco — visão em tela cheia</h2>
+        <div class="hint" style="margin:2px 0 0" id="ov-modal-sub">Vermelho = maior reação de apoio (esforço concentrado em roletes/alianças) naquele ângulo de giro.</div></div>
+      <button class="btn-ghost" id="ov-modal-close" style="margin:0;padding:8px 14px">✕ Fechar</button>
+    </div>
+    <div class="ov-geo">
+      <label>Ø externo do casco (m) <input type="number" id="ov-D" min="1.4" max="3.6" step="0.05" value="2.4"></label>
+      <label>Ø pista das alianças (m) <input type="number" id="ov-tD" min="1.6" max="5.2" step="0.05" value="2.8"></label>
+      <label>Comprimento do forno (m) <input type="number" id="ov-L" min="14" max="90" step="1" value="30"></label>
+      <span class="hint" style="flex:1;min-width:160px">Altere os valores para recalcular a ovalização e os KPIs em tempo real — os mesmos parâmetros do painel principal.</span>
+    </div>
+    <div class="ov-grid">
+      <div><div style="font-size:11px;color:var(--dim);margin-bottom:4px;text-align:center">Base 3 · entrada</div><canvas id="ovm-base1"></canvas></div>
+      <div><div style="font-size:11px;color:var(--dim);margin-bottom:4px;text-align:center">Base 2 · centro</div><canvas id="ovm-base2"></canvas></div>
+      <div><div style="font-size:11px;color:var(--dim);margin-bottom:4px;text-align:center">Base 1 · maçarico</div><canvas id="ovm-base3"></canvas></div>
+      <div><div style="font-size:11px;color:var(--dim);margin-bottom:4px;text-align:center">Resfriador</div><canvas id="ovm-cooler"></canvas></div>
+    </div>
+    <div class="ov-kpis" id="ov-kpis"></div>
   </div>
 </div>
 
@@ -275,7 +345,7 @@ const THREE=window.THREE;
 const P = {
   grade:'70', Tset:1500, incline:3.0, rpm:2.0, draft:70, feed:8.0,
   L:30, D:2.4, tyreD:2.8, rollerD:1.1, rollerL:0.9,
-  cutaway:true, showMat:true, showFlame:true, showStruct:true, labels:true, shadows:true, spin:true, heatmap:false,
+  cutaway:true, showMat:true, showFlame:true, showStruct:true, showShell:true, labels:true, shadows:true, spin:true, heatmap:false, axis:true,
   kilnWeightT:80, mancais:new Array(12).fill(0)
 };
 // Janelas de queima INDICATIVAS — calibrar com dados reais da Togni
@@ -434,7 +504,7 @@ const feedSector=new THREE.Group(); scene.add(feedSector);
 // setor do resfriador: 2º forno rotativo (menor, mais curto, 2 bases) em trincheira inferior + calha de queda
 const coolerSector=new THREE.Group(); scene.add(coolerSector);
 const coolerTilt=new THREE.Group(); coolerSector.add(coolerTilt);
-const KC={ spin:null, rollers:[] };
+const KC={ spin:null, rollers:[], cascade:null, cascadeData:[], cRin:0, cL:0, axisLine:null };
 let coolerGroup=null, chuteGroup=null;
 // setor de transporte final: elevador de canecas + esteira de distribuição + baias de classificação
 const transportSector=new THREE.Group(); scene.add(transportSector);
@@ -447,13 +517,13 @@ let elevGroup=null, bayGroup=null, dischStepGrp=null;
 const tilt=new THREE.Group(); kilnSector.add(tilt);
 const labelGroup=new THREE.Group(); tilt.add(labelGroup);
 const K={ spin:null, bed:null, nod:null, nodData:[], flame:null, fan:null, rollers:[], pinion:null,
-          tracers:[], clipMeshes:[], labels:[] };
+          tracers:[], clipMeshes:[], labels:[], cascade:null, cascadeData:[], axisLine:null };
 let R=1.2, Rin=0.9, baseXs=[], groundLevel=-3, cRmod=0.6;
 // Trincheira do forno: profundidade indicativa ~2,3 m (aprofunda automaticamente p/ liberar roletes maiores),
 // folga lateral/longitudinal ~2,3 m das estruturas; guarda-corpo NR12 a 1,10 m + travessão intermediário a 0,55 m.
 const TRENCH_DEPTH_NOM=2.3, TRENCH_CLEAR=2.3, RAIL_H=1.10, RAIL_MID=0.55, RAIL_YELLOW=0xf5c521;
 const WALK_LIMIT_MM=110; // passeio axial máx. até contato com os roletes de apoio (Base 2)
-let groundFrame=null, trenchGroup=null, feedGroup=null;
+let groundFrame=null, trenchGroup=null, feedGroup=null, plantShell=null;
 const matConcrete=new THREE.MeshStandardMaterial({color:0x2a2f35,roughness:0.95,metalness:0.02});
 const matFloor=new THREE.MeshStandardMaterial({color:0x12171d,roughness:0.97,metalness:0.0});
 const matYellow=new THREE.MeshStandardMaterial({color:RAIL_YELLOW,roughness:0.55,metalness:0.25,emissive:0x3a2c00,emissiveIntensity:0.15});
@@ -785,7 +855,7 @@ function buildAll(){
   flame.add(emb); flame.userData.emb=emb;
 
   /* ---- CAPELAS / EXAUSTOR (translúcidas p/ vista de perfil) ---- */
-  const feedX=-L/2, coolX=L/2;
+  const feedX=-L/2, coolX=L/2; K.coolX=coolX;
   const feedHood=new THREE.Mesh(new THREE.BoxGeometry(R*1.8,R*2.5,R*2.5),matCast(0x2c333b,0.4,0.7));
   feedHood.material.transparent=true; feedHood.material.opacity=0.3; feedHood.position.set(feedX-R*0.9,0,0); tilt.add(feedHood);
   const riser=new THREE.Mesh(new THREE.CylinderGeometry(R*0.5,R*0.5,R*3,24),matSteel(0x6b737c,0.8,0.5));
@@ -796,6 +866,30 @@ function buildAll(){
   for(let i=0;i<7;i++){ const bl=new THREE.Mesh(new THREE.BoxGeometry(R*0.72,R*0.13,0.02),matSteel(0xaab2bb,0.85,0.35)); bl.rotation.z=i/7*Math.PI*2; fan.add(bl); }
   addLabel('Exaustor de tiragem',feedX-R*0.9,R*5.0,0,'rgba(127,176,255,0.9)');
   addLabel('Alimentação',feedX-R*2.0,R*0.4,0,'rgba(255,255,255,0.55)');
+
+  /* ---- duto -> filtro de manga (baghouse) -> chaminé acima do telhado ---- */
+  const dustX=feedX-R*0.9, dustZ0=0, dustZ1=R*3.6, ductY=R*4.55, bagW=R*2.4, bagH=R*2.0;
+  const matDuct=matSteel(0x5a626b,0.78,0.5);
+  const duct1=new THREE.Mesh(new THREE.CylinderGeometry(R*0.3,R*0.3,dustZ1,16),matDuct);
+  duct1.rotation.x=Math.PI/2; duct1.position.set(dustX,ductY,dustZ1/2); tilt.add(duct1);
+  const elbow=new THREE.Mesh(new THREE.SphereGeometry(R*0.32,12,10),matDuct); elbow.position.set(dustX,ductY,dustZ1); tilt.add(elbow);
+  const bagY=ductY+bagH/2+R*0.4;
+  const baghouse=new THREE.Mesh(new THREE.BoxGeometry(bagW,bagH,bagW),matCast(0x3a4148,0.55,0.55));
+  baghouse.castShadow=true; baghouse.position.set(dustX,bagY,dustZ1); tilt.add(baghouse);
+  const duct2=new THREE.Mesh(new THREE.CylinderGeometry(R*0.3,R*0.3,bagY-bagH/2-ductY,12),matDuct);
+  duct2.position.set(dustX,(ductY+(bagY-bagH/2))/2,dustZ1); tilt.add(duct2);
+  for(let mi=0;mi<3;mi++) for(let mj=0;mj<3;mj++){
+    const mg=new THREE.Mesh(new THREE.CylinderGeometry(R*0.1,R*0.1,bagH*0.85,8),matSteel(0xc9cdd1,0.55,0.2));
+    mg.position.set(dustX-bagW*0.32+mi*bagW*0.32,bagY+bagH*0.05,dustZ1-bagW*0.32+mj*bagW*0.32); tilt.add(mg);
+  }
+  addLabel('Filtro de manga',dustX+bagW*0.9,bagY,dustZ1,'rgba(127,176,255,0.85)');
+  const chimH=R*7.5, chimR=R*0.42;
+  const chimY=bagY+bagH/2+chimH/2;
+  const chimney=new THREE.Mesh(new THREE.CylinderGeometry(chimR,chimR*1.15,chimH,20),matCast(0x6b4a3a,0.7,0.25));
+  chimney.castShadow=true; chimney.position.set(dustX,chimY,dustZ1); tilt.add(chimney); K.chimneyTopY=chimY+chimH/2;
+  const chimCap=new THREE.Mesh(new THREE.CylinderGeometry(chimR*1.25,chimR*1.25,R*0.18,20),matCast(0x3a4148,0.6,0.4));
+  chimCap.position.set(dustX,chimY+chimH/2+R*0.1,dustZ1); tilt.add(chimCap);
+  addLabel('Chaminé',dustX+chimR*2,chimY+chimH/2,dustZ1,'rgba(245,165,35,0.85)');
   const hood=new THREE.Mesh(new THREE.BoxGeometry(R*2,R*2.7,R*2.7),matCast(0x2c333b,0.4,0.7));
   hood.material.transparent=true; hood.material.opacity=0.3; hood.position.set(coolX+R*1.0,0,0); tilt.add(hood);
   const burner=new THREE.Mesh(new THREE.CylinderGeometry(R*0.13,R*0.13,R*3.6,18),matSteel(0x7a828b,0.85,0.4));
@@ -806,6 +900,24 @@ function buildAll(){
   const trGeo=new THREE.SphereGeometry(Rin*0.13,12,10);
   const trMat=new THREE.MeshStandardMaterial({color:0x54c8e8,emissive:0x2aa6cc,emissiveIntensity:1.4,roughness:0.35});
   for(let i=0;i<10;i++){ const m=new THREE.Mesh(trGeo,trMat); m.visible=false; stat.add(m); K.tracers.push({mesh:m,active:false,t:0,lead:i===0}); }
+
+  /* ---- cascata de material incandescente na saída/descarga (giro do forno tomba o leito) ---- */
+  const NCASC=64, cascGeo=new THREE.BufferGeometry(), cascPos=new Float32Array(NCASC*3);
+  for(let i=0;i<NCASC;i++){
+    cascPos[i*3]=coolX-Rin*0.15-Math.random()*Rin*0.7;
+    cascPos[i*3+1]=Rin*(0.2+Math.random()*0.65);
+    cascPos[i*3+2]=(Math.random()-0.5)*Rin*1.5;
+  }
+  cascGeo.setAttribute('position',new THREE.BufferAttribute(cascPos,3));
+  const cascMat=new THREE.PointsMaterial({color:0xffae42,size:Rin*0.12,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false});
+  const cascade=new THREE.Points(cascGeo,cascMat); stat.add(cascade); K.cascade=cascade;
+  K.cascadeData=[]; for(let i=0;i<NCASC;i++) K.cascadeData.push({vy:0});
+
+  /* ---- linha de centro / eixo geométrico do forno (referência de alinhamento) ---- */
+  const axisGeo=new THREE.BufferGeometry();
+  axisGeo.setFromPoints([new THREE.Vector3(feedX-R*1.4,0,0),new THREE.Vector3(coolX+R*1.4,0,0)]);
+  const axisMat=new THREE.LineDashedMaterial({color:0xff3b30,dashSize:R*0.55,gapSize:R*0.22,linewidth:1,transparent:true,opacity:0.9,depthTest:false});
+  const axisLine=new THREE.Line(axisGeo,axisMat); axisLine.computeLineDistances(); axisLine.renderOrder=999; tilt.add(axisLine); K.axisLine=axisLine;
 
   applyToggles();
   buildCooler();
@@ -867,6 +979,25 @@ function buildCooler(){
   const mot=new THREE.Mesh(new THREE.BoxGeometry(cR*0.9,cR*0.5,cR*0.5),matCast(0x2f363d,0.5,0.6));
   mot.position.set(mX,yC-rollerR-cR*0.3,0); coolerGroup.add(mot);
   addLabel('Motorredutor',mX+offX,yC-rollerR-cR*0.3+cR*0.5+dropY,0,'rgba(255,255,255,0.55)');
+
+  /* ---- cascata de material (já parcialmente resfriado) na saída do resfriador ---- */
+  const NCASC2=48, cCascGeo=new THREE.BufferGeometry(), cCascPos=new Float32Array(NCASC2*3);
+  for(let i=0;i<NCASC2;i++){
+    cCascPos[i*3]=cL/2-cRin*0.15-Math.random()*cRin*0.7;
+    cCascPos[i*3+1]=cRin*(0.2+Math.random()*0.6);
+    cCascPos[i*3+2]=(Math.random()-0.5)*cRin*1.5;
+  }
+  cCascGeo.setAttribute('position',new THREE.BufferAttribute(cCascPos,3));
+  const cCascMat=new THREE.PointsMaterial({color:0xb33a1e,size:cRin*0.13,transparent:true,opacity:0.6,blending:THREE.AdditiveBlending,depthWrite:false});
+  const cCascade=new THREE.Points(cCascGeo,cCascMat); cCascade.visible=P.showMat; coolerGroup.add(cCascade); KC.cascade=cCascade;
+  KC.cascadeData=[]; for(let i=0;i<NCASC2;i++) KC.cascadeData.push({vy:0});
+  KC.cRin=cRin; KC.cL=cL;
+
+  /* ---- linha de centro / eixo geométrico do resfriador (referência de alinhamento) ---- */
+  const cAxisGeo=new THREE.BufferGeometry();
+  cAxisGeo.setFromPoints([new THREE.Vector3(-cL/2-cR*1.4,0,0),new THREE.Vector3(cL/2+cR*1.4,0,0)]);
+  const cAxisMat=new THREE.LineDashedMaterial({color:0xff3b30,dashSize:cR*0.55,gapSize:cR*0.22,linewidth:1,transparent:true,opacity:0.9,depthTest:false});
+  const cAxisLine=new THREE.Line(cAxisGeo,cAxisMat); cAxisLine.computeLineDistances(); cAxisLine.renderOrder=999; coolerTilt.add(cAxisLine); KC.axisLine=cAxisLine;
 
   // piso fabril + trincheira inferior do resfriador (guarda-corpo NR12 + escada)
   const BIG=120;
@@ -1028,6 +1159,96 @@ function buildElevatorAndBays(offX,dropY,cL,cR,cHalfX){
     addLabel('Baia '+(i+1)+' · '+grades[i%3]+'% Al₂O₃',bayRowX,wallH+0.55,bz,'rgba(245,166,35,0.85)');
   }
   addLabel('Baias de classificação',bayRowX,wallH+1.9,rowZ0-1.4,'rgba(255,255,255,0.6)');
+
+  buildPlantShell();
+}
+
+/* ---- GALPÃO INDUSTRIAL: estrutura, telhado e ambiente fabril (big bags, empilhadeiras, pá carregadeira) ---- */
+function buildPlantShell(){
+  if(plantShell){disp(plantShell);scene.remove(plantShell);}
+  plantShell=new THREE.Group(); scene.add(plantShell); plantShell.visible=P.showShell!==false;
+  const box=new THREE.Box3();
+  [kilnSector,coolerSector,feedSector,transportSector].forEach(g=>box.union(sectorBox(g)));
+  if(box.isEmpty())return;
+  const margin=7, x0=box.min.x-margin, x1=box.max.x+margin, z0=box.min.z-margin, z1=box.max.z+margin;
+  const eaveH=Math.max(box.max.y+5.5,K.chimneyTopY?K.chimneyTopY*0.55:14);
+  const ridgeH=eaveH+Math.max(4,(x1-x0)*0.06);
+  const cx=(x0+x1)/2, cz=(z0+z1)/2, halfX=(x1-x0)/2, halfZ=(z1-z0)/2;
+  const matWall=new THREE.MeshStandardMaterial({color:0x8d949b,roughness:0.85,metalness:0.15,side:THREE.DoubleSide});
+  const matRoof=new THREE.MeshStandardMaterial({color:0x5c3b34,roughness:0.7,metalness:0.2,side:THREE.DoubleSide,transparent:true,opacity:0.4,depthWrite:false});
+  const matSteelCol=matSteel(0x3a4148,0.6,0.5);
+  // colunas perimetrais
+  const colSpacing=8, nx=Math.max(2,Math.round((x1-x0)/colSpacing));
+  for(let i=0;i<=nx;i++){
+    const cxp=x0+(x1-x0)*i/nx;
+    [z0,z1].forEach(zp=>{ const col=new THREE.Mesh(new THREE.BoxGeometry(0.45,eaveH,0.45),matSteelCol);
+      col.position.set(cxp,eaveH/2,zp); col.castShadow=true; plantShell.add(col); });
+  }
+  const nz=Math.max(2,Math.round((z1-z0)/colSpacing));
+  for(let j=0;j<=nz;j++){
+    const czp=z0+(z1-z0)*j/nz;
+    [x0,x1].forEach(xp=>{ const col=new THREE.Mesh(new THREE.BoxGeometry(0.45,eaveH,0.45),matSteelCol);
+      col.position.set(xp,eaveH/2,czp); col.castShadow=true; plantShell.add(col); });
+  }
+  // paredes (translúcidas para não esconder o forno) — fechamento metálico tipo galpão
+  const wallMatT=matWall.clone(); wallMatT.transparent=true; wallMatT.opacity=0.22;
+  const wN=new THREE.Mesh(new THREE.PlaneGeometry(x1-x0,eaveH),wallMatT); wN.position.set(cx,eaveH/2,z0); plantShell.add(wN);
+  const wS=wN.clone(); wS.position.set(cx,eaveH/2,z1); wS.rotation.y=Math.PI; plantShell.add(wS);
+  const wW=new THREE.Mesh(new THREE.PlaneGeometry(z1-z0,eaveH),wallMatT); wW.rotation.y=Math.PI/2; wW.position.set(x0,eaveH/2,cz); plantShell.add(wW);
+  const wE=wW.clone(); wE.position.set(x1,eaveH/2,cz); wE.rotation.y=-Math.PI/2; plantShell.add(wE);
+  // telhado em duas águas (cumeeira ao longo do eixo X)
+  const roofRun=halfZ, roofSlopeLen=Math.hypot(roofRun,ridgeH-eaveH);
+  const roofGeo=new THREE.PlaneGeometry(x1-x0,roofSlopeLen);
+  const roofA=new THREE.Mesh(roofGeo,matRoof); roofA.position.set(cx,(eaveH+ridgeH)/2,cz-roofRun/2);
+  roofA.rotation.x=-Math.atan2(ridgeH-eaveH,roofRun)-Math.PI/2; roofA.castShadow=true; plantShell.add(roofA);
+  const roofB=new THREE.Mesh(roofGeo,matRoof); roofB.position.set(cx,(eaveH+ridgeH)/2,cz+roofRun/2);
+  roofB.rotation.x=Math.atan2(ridgeH-eaveH,roofRun)+Math.PI/2; roofB.castShadow=true; plantShell.add(roofB);
+  const ridge=new THREE.Mesh(new THREE.BoxGeometry(x1-x0,0.35,0.35),matSteelCol); ridge.position.set(cx,ridgeH,cz); plantShell.add(ridge);
+  // tesouras (treliças) a cada vão de coluna
+  for(let i=0;i<=nx;i++){
+    const cxp=x0+(x1-x0)*i/nx;
+    const tr=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.18,halfZ*2*0.98),matSteelCol);
+    tr.position.set(cxp,eaveH,cz); plantShell.add(tr);
+  }
+  addLabel('Galpão industrial · Unidade Sacramento',cx,ridgeH+1.6,z0-1.5,'rgba(245,165,35,0.9)');
+
+  /* ---- props de pátio fabril: big bags, empilhadeiras, pá carregadeira ---- */
+  const matBag=new THREE.MeshStandardMaterial({color:0xcdb27a,roughness:0.95,metalness:0.0});
+  const propsZ=z1-3.2;
+  for(let i=0;i<4;i++){
+    const bag=new THREE.Mesh(new THREE.CylinderGeometry(0.62,0.5,1.35,16),matBag);
+    bag.position.set(x1-4-i*1.5,0.68,propsZ); bag.castShadow=true; plantShell.add(bag);
+    const strap=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.5,0.06),matSteel(0xdedede,0.4,0.05));
+    [[-0.35,-0.35],[0.35,-0.35],[-0.35,0.35],[0.35,0.35]].forEach(([dx,dz])=>{ const s=strap.clone();
+      s.position.set(bag.position.x+dx,1.55,propsZ+dz); plantShell.add(s); });
+  }
+  addLabel('Big bags',x1-7,1.5,propsZ-1.3,'rgba(255,255,255,0.55)');
+
+  function buildForklift(px,pz,rot){
+    const grp=new THREE.Group(); grp.position.set(px,0,pz); grp.rotation.y=rot; plantShell.add(grp);
+    const body=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.95,0.95),matCast(0xd99a1f,0.6,0.4)); body.position.y=0.75; body.castShadow=true; grp.add(body);
+    const cab=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.85,0.85),matCast(0x2c333b,0.5,0.3)); cab.position.set(-0.45,1.4,0); grp.add(cab);
+    [[-0.6,-0.5],[-0.6,0.5],[0.6,-0.5],[0.6,0.5]].forEach(([dx,dz])=>{ const wh=new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.28,0.28,14),matCast(0x1a1a1a,0.9,0.1));
+      wh.rotation.x=Math.PI/2; wh.position.set(dx,0.28,dz); grp.add(wh); });
+    const mast=new THREE.Mesh(new THREE.BoxGeometry(0.1,1.7,0.7),matSteel(0x6b737c,0.7,0.4)); mast.position.set(1.0,0.95,0); grp.add(mast);
+    const forks=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.06,0.5),matSteel(0x6b737c,0.7,0.4)); forks.position.set(1.35,0.32,0); grp.add(forks);
+  }
+  buildForklift(x1-6,propsZ-3.6,Math.PI/2);
+  buildForklift(x1-9,propsZ-3.6,Math.PI/2+0.3);
+  addLabel('Empilhadeiras',x1-7.5,1.6,propsZ-4.6,'rgba(255,255,255,0.55)');
+
+  function buildWheelLoader(px,pz,rot){
+    const grp=new THREE.Group(); grp.position.set(px,0,pz); grp.rotation.y=rot; plantShell.add(grp);
+    const rear=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.1,1.3),matCast(0xe0b020,0.6,0.4)); rear.position.set(-0.9,0.85,0); rear.castShadow=true; grp.add(rear);
+    const cab=new THREE.Mesh(new THREE.BoxGeometry(1.0,1.0,1.1),matCast(0xdfe6ec,0.4,0.2)); cab.position.set(-0.4,1.75,0); grp.add(cab);
+    const front=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.6,1.2),matCast(0xe0b020,0.6,0.4)); front.position.set(0.6,0.7,0); grp.add(front);
+    const arm=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.16,0.18),matSteel(0x6b737c,0.7,0.4)); arm.position.set(1.1,1.1,0); grp.add(arm);
+    const bucket=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.55,1.3),matSteel(0x4a525a,0.75,0.45)); bucket.position.set(1.85,0.55,0); grp.add(bucket);
+    [[-1.4,0],[0.5,0]].forEach(([dx])=>{ const wh=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.42,0.4,16),matCast(0x1a1a1a,0.9,0.1));
+      wh.rotation.x=Math.PI/2; wh.position.set(dx,0.42,0); grp.add(wh); });
+  }
+  buildWheelLoader(x0+6,z1-3.5,-Math.PI/2);
+  addLabel('Pá carregadeira',x0+6,2.1,z1-5.5,'rgba(255,255,255,0.55)');
 }
 
 function updateBuckets(phase){
@@ -1081,10 +1302,12 @@ function enterInterior(sec){
   const Lref=(sec==='kiln')?P.L:Math.max(8,P.L*0.52);
   const Rref=(sec==='kiln')?R:Math.max(0.55,R*0.62);
   const grp=(sec==='kiln')?tilt:coolerTilt;
-  const wp=new THREE.Vector3(-Lref*0.5+Lref*0.32,0,0);
+  // posiciona a câmera próxima da saída/descarga (ponto de queda da cascata incandescente)
+  const wp=new THREE.Vector3(Lref*0.5-Lref*0.16,0,0);
   grp.updateMatrixWorld(true); wp.applyMatrix4(grp.matrixWorld);
   cam.target.copy(wp);
-  cam.tr=Math.max(Rref*1.5,2.2); cam.tθ=1.15; cam.tφ=1.5;
+  cam.tr=(sec==='kiln')?Math.max(Rref*0.7,1.4):Math.max(Rref*0.6,0.45);
+  cam.tθ=1.15+Math.PI; cam.tφ=1.5;
 }
 function sectorBox(obj){
   const box=new THREE.Box3();
@@ -1143,11 +1366,15 @@ canvas.addEventListener('wheel',e=>{e.preventDefault();cam.tr=clamp(cam.tr*(1+e.
 function applyClip(){ const arr=P.cutaway?[clip]:[]; K.clipMeshes.forEach(m=>{if(m.material)m.material.clippingPlanes=arr;}); }
 function applyToggles(){
   if(K.bed)K.bed.visible=P.showMat; if(K.nod)K.nod.visible=P.showMat;
+  if(K.cascade)K.cascade.visible=P.showMat; if(KC.cascade)KC.cascade.visible=P.showMat;
   if(K.flame)K.flame.visible=P.showFlame;
   if(K.rollers[0]&&K.rollers[0].parent)K.rollers[0].parent.visible=P.showStruct;
+  if(plantShell)plantShell.visible=P.showShell;
   labelGroup.visible=P.labels;
   if(K.heatKiln)K.heatKiln.visible=P.heatmap;
   if(K.heatCooler)K.heatCooler.visible=P.heatmap;
+  if(K.axisLine)K.axisLine.visible=P.axis;
+  if(KC.axisLine)KC.axisLine.visible=P.axis;
   renderer.shadowMap.enabled=P.shadows; renderer.shadowMap.needsUpdate=true;
   applyClip();
 }
@@ -1198,6 +1425,7 @@ function refreshAnalysis(){
   elQ.style.background=cm[cls]; elS.textContent=`${(q*100).toFixed(0)}% · ${txt}`; elS.style.color=cm[cls];
   elNote.innerHTML='τ por <b>Sullivan, Maier &amp; Ralston (1927)</b>: τ = 1,77·L·√φ /(D·N·S). Janelas de queima e ângulos de repouso são <b>indicativos</b> — calibrar com os dados reais de processo da Togni.';
   colorBed(); drawProfile();
+  saveFornoState();
 }
 
 /* ===================================================================
@@ -1250,6 +1478,34 @@ function animate(now){
       const c=heat(h*hS); col.setRGB(c[0],c[1],c[2]); K.nod.setColorAt(i,col);
     }
     K.nod.instanceMatrix.needsUpdate=true; if(K.nod.instanceColor)K.nod.instanceColor.needsUpdate=true;
+  }
+
+  /* ---- cascata incandescente na saída do forno (clínquer tombando pelo giro) ---- */
+  if(P.showMat&&K.cascade){
+    const pa=K.cascade.geometry.attributes.position, hS=clamp(Tpeak()/GR[P.grade].Talvo,0.45,1.12);
+    const c=heat(0.92*hS); K.cascade.material.color.setRGB(c[0],c[1],c[2]);
+    K.cascade.material.opacity=0.7+0.25*Math.sin(t*26);
+    for(let i=0;i<K.cascadeData.length;i++){
+      const pd=K.cascadeData[i]; pd.vy-=2.2*dt;
+      let y=pa.getY(i)+pd.vy*dt;
+      if(y<-Rin*0.85){ y=Rin*(0.2+Math.random()*0.65); pd.vy=0;
+        pa.setX(i,K.coolX-Rin*0.15-Math.random()*Rin*0.7); pa.setZ(i,(Math.random()-0.5)*Rin*1.5); }
+      pa.setY(i,y);
+    }
+    pa.needsUpdate=true;
+  }
+  /* ---- cascata (já resfriada) na saída do resfriador ---- */
+  if(P.showMat&&KC.cascade){
+    const pa=KC.cascade.geometry.attributes.position, cRin2=KC.cRin,cL2=KC.cL;
+    KC.cascade.material.opacity=0.4+0.18*Math.sin(t*18+1.3);
+    for(let i=0;i<KC.cascadeData.length;i++){
+      const pd=KC.cascadeData[i]; pd.vy-=2.2*dt;
+      let y=pa.getY(i)+pd.vy*dt;
+      if(y<-cRin2*0.85){ y=cRin2*(0.2+Math.random()*0.65); pd.vy=0;
+        pa.setX(i,cL2/2-cRin2*0.15-Math.random()*cRin2*0.7); pa.setZ(i,(Math.random()-0.5)*cRin2*1.5); }
+      pa.setY(i,y);
+    }
+    pa.needsUpdate=true;
   }
 
   const drift=(axialSpeed()/P.L)*dt*0.5,half=P.L/2;
@@ -1380,6 +1636,7 @@ function setupKPICanvas(id){
   return {x,w,h};
 }
 function drawKPI(oeeV,avail,perf,q){
+  // pizza: composição do OEE (perdas de disponibilidade, performance e qualidade)
   const pie=setupKPICanvas('kpi-pie');
   if(pie){
     const {x,w,h}=pie, cx=w/2,cy=h/2,rad=Math.min(w,h)/2-10;
@@ -1393,6 +1650,7 @@ function drawKPI(oeeV,avail,perf,q){
     x.font='9px Inter,Arial';x.textAlign='left';x.textBaseline='alphabetic';
     segs.forEach(([n,v,c],i)=>{ x.fillStyle=c;x.fillRect(4,h-10-i*12,7,7); x.fillStyle='rgba(255,255,255,0.6)'; x.fillText(n+' '+(v*100).toFixed(0)+'%',14,h-4-i*12); });
   }
+  // barra: produção estimada por turno (8h cada), a partir da vazão atual e do OEE
   const bar=setupKPICanvas('kpi-bar');
   if(bar){
     const {x,w,h}=bar, turnos=['Manhã','Tarde','Noite'], base=P.feed*8*oeeV;
@@ -1404,6 +1662,7 @@ function drawKPI(oeeV,avail,perf,q){
       x.fillText(fmt(v,0),bx+bwid/2,h-padB-bh-3);
       x.fillStyle='rgba(255,255,255,0.45)'; x.fillText(turnos[i],bx+bwid/2,h-4); });
   }
+  // linha: curva de produção acumulada ao longo de um turno de 8h (rampa de aquecimento + regime)
   const line=setupKPICanvas('kpi-line');
   if(line){
     const {x,w,h}=line, hrs=8, rate=P.feed*oeeV, padB=14,padT=6;
@@ -1445,7 +1704,42 @@ function drawOvalPolar(id,ampRatio,radiusM){
 function drawOvalization(){
   baseXs.forEach((bx,i)=>drawOvalPolar('oval-base'+(i+1),ovalAmplitude(i,baseXs.length),R));
   drawOvalPolar('oval-cooler',clamp(0.003+wearIndex()*0.01+thermalStressIdx()*0.004,0,0.02),cRmod);
+  if($('#oval-modal').classList.contains('open')) refreshOvalModal();
 }
+/* ---- tela cheia: ovalização + KPIs combinados ---- */
+function refreshOvalModal(){
+  baseXs.forEach((bx,i)=>drawOvalPolar('ovm-base'+(i+1),ovalAmplitude(i,baseXs.length),R));
+  drawOvalPolar('ovm-cooler',clamp(0.003+wearIndex()*0.01+thermalStressIdx()*0.004,0,0.02),cRmod);
+  const kpis=[
+    ['OEE',(oee()*100).toFixed(1)+' %'],
+    ['Qualidade',(quality()*100).toFixed(1)+' %'],
+    ['Produção',fmt(P.feed,1)+' t/h'],
+    ['Desgaste roletes/alianças',(wearIndex()*100).toFixed(1)+' %'],
+    ['Fadiga térmica refratário',(thermalStressIdx()*100).toFixed(1)+' %'],
+    ['Vida útil refratário',refractoryLifePct().toFixed(1)+' %'],
+    ['Temp. estimada mancais',bearingTempEst().toFixed(0)+' °C'],
+    ['Passeio axial',fmt(K.walkMM||0,1)+' / '+WALK_LIMIT_MM+' mm'],
+    ['Próxima manutenção',daysToMaint()+' dias']
+  ];
+  $('#ov-kpis').innerHTML=kpis.map(([k,v])=>`<div class="ov-kpi"><span style="font-size:10px;color:var(--dim)">${k}</span><b>${v}</b></div>`).join('');
+}
+function openOvalModal(){
+  $('#ov-D').value=P.D; $('#ov-tD').value=P.tyreD; $('#ov-L').value=P.L;
+  $('#oval-modal').classList.add('open');
+  refreshOvalModal();
+}
+function closeOvalModal(){ $('#oval-modal').classList.remove('open'); }
+$$('[data-oval-zoom]').forEach(el=>el.addEventListener('click',openOvalModal));
+$('#ov-modal-close').addEventListener('click',closeOvalModal);
+$('#oval-modal').addEventListener('click',e=>{ if(e.target.id==='oval-modal') closeOvalModal(); });
+[['ov-D','D'],['ov-tD','tyreD'],['ov-L','L']].forEach(([id,key])=>{
+  $('#'+id).addEventListener('input',e=>{
+    const v=parseFloat(e.target.value); if(Number.isNaN(v))return;
+    P[key]=v;
+    const slMap={D:'s-D',tyreD:'s-tD',L:'s-L'}; const sl=$('#'+slMap[key]); if(sl) sl.value=v;
+    buildAll(); buildNeedlesUI(); refreshAnalysis(); refreshIA();
+  });
+});
 
 $$('#grades button').forEach(b=>b.addEventListener('click',()=>{$$('#grades button').forEach(x=>x.classList.remove('on'));b.classList.add('on');P.grade=b.dataset.g;refreshAnalysis();refreshCalib();}));
 
@@ -1472,10 +1766,243 @@ $$('.views button').forEach(b=>b.addEventListener('click',()=>{$$('.views button
 $$('#sectors button').forEach(b=>b.addEventListener('click',()=>{$$('#sectors button').forEach(x=>x.classList.remove('on'));b.classList.add('on');setSector(b.dataset.sec);}));
 $('#toggle').addEventListener('click',()=>$('#panel').classList.toggle('open'));
 
+/* ---- importação / exportação de arquivos ---- */
+function dl(filename,mime,content){
+  const blob=new Blob([content],{type:mime}), a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},200);
+}
+function clearDrawingPreview(){
+  const box=$('#imp-preview'), body=$('#imp-preview-body');
+  if(body){ const old=body.querySelector('img,embed'); if(old&&old.src&&old.src.startsWith('blob:')) URL.revokeObjectURL(old.src); body.innerHTML=''; }
+  if(box) box.style.display='none';
+}
+function showDrawingPreview(f){
+  const box=$('#imp-preview'), body=$('#imp-preview-body'), name=$('#imp-preview-name');
+  if(!box||!body) return;
+  body.innerHTML=''; name.textContent=f.name;
+  const url=URL.createObjectURL(f);
+  if(/\.pdf$/i.test(f.name)){
+    const emb=document.createElement('embed'); emb.src=url; emb.type='application/pdf'; emb.style.width='100%'; emb.style.height='260px';
+    body.appendChild(emb);
+  } else {
+    const img=document.createElement('img'); img.src=url; img.style.maxWidth='100%'; img.style.display='block'; img.style.margin='0 auto';
+    body.appendChild(img);
+  }
+  box.style.display='block';
+}
+$('#imp-preview-clear').addEventListener('click',clearDrawingPreview);
+$('#imp-btn').addEventListener('click',()=>$('#imp-file').click());
+function applyConfig(cfg){
+  Object.assign(P,cfg.P||{});
+  if(cfg.mancais) P.mancais=cfg.mancais;
+  ['s-T','s-inc','s-rpm','s-dr','s-feed','s-L','s-D','s-tD','s-rD','s-rL','s-kw'].forEach(id=>{
+    const map={'s-T':'Tset','s-inc':'incline','s-rpm':'rpm','s-dr':'draft','s-feed':'feed','s-L':'L','s-D':'D','s-tD':'tyreD','s-rD':'rollerD','s-rL':'rollerL','s-kw':'kilnWeightT'};
+    const k=map[id]; if(P[k]!==undefined && $('#'+id)){ $('#'+id).value=P[k]; }
+  });
+  buildAll(); buildNeedlesUI(); refreshAnalysis(); refreshIA();
+}
+/* ---- persistência automática (localStorage compartilhado com o painel de gestão) ---- */
+const FORNO_LS_KEY='dn2_forno_cfg';
+let _fornoSaveTimer=null;
+function _fornoCfgAtual(){
+  return {P:{Tset:P.Tset,incline:P.incline,rpm:P.rpm,draft:P.draft,feed:P.feed,L:P.L,D:P.D,tyreD:P.tyreD,rollerD:P.rollerD,rollerL:P.rollerL,kilnWeightT:P.kilnWeightT,grade:P.grade},mancais:P.mancais};
+}
+function saveFornoState(){
+  clearTimeout(_fornoSaveTimer);
+  _fornoSaveTimer=setTimeout(()=>{
+    try{
+      localStorage.setItem(FORNO_LS_KEY,JSON.stringify(_fornoCfgAtual()));
+      if(window.parent && window.parent!==window){ window.parent.postMessage({tipo:'dn2-forno-atualizado',ts:Date.now()},'*'); }
+    }catch(e){}
+  },1200);
+}
+function loadFornoState(){
+  try{
+    const raw=localStorage.getItem(FORNO_LS_KEY);
+    if(!raw) return;
+    const cfg=JSON.parse(raw);
+    applyConfig(cfg);
+  }catch(e){}
+}
+$('#imp-file').addEventListener('change',async(e)=>{
+  const f=e.target.files[0]; if(!f)return;
+  const st=$('#imp-status');
+  if(/\.json$/i.test(f.name)){
+    try{
+      const cfg=JSON.parse(await f.text());
+      applyConfig(cfg);
+      saveFornoState();
+      st.textContent='✔ Configuração "'+f.name+'" importada.';
+    }catch(err){ st.textContent='✘ Falha ao importar JSON: '+err.message; }
+  } else if(/\.csv$/i.test(f.name)){
+    st.textContent='✔ Planilha "'+f.name+'" recebida (referência de controle — exiba/concilie manualmente com os parâmetros do painel).';
+  } else if(/\.(png|jpe?g|pdf)$/i.test(f.name)){
+    showDrawingPreview(f);
+    st.textContent='✔ Desenho "'+f.name+'" exibido abaixo como referência visual (anexo informativo — não altera a geometria simulada).';
+  } else {
+    st.textContent='✔ Arquivo "'+f.name+'" recebido como referência (anexo informativo — não altera a geometria simulada).';
+  }
+  e.target.value='';
+});
+$('#exp-config').addEventListener('click',()=>{
+  const cfg={P:{Tset:P.Tset,incline:P.incline,rpm:P.rpm,draft:P.draft,feed:P.feed,L:P.L,D:P.D,tyreD:P.tyreD,rollerD:P.rollerD,rollerL:P.rollerL,kilnWeightT:P.kilnWeightT,grade:P.grade},mancais:P.mancais};
+  dl('forno-config-sacramento.json','application/json',JSON.stringify(cfg,null,2));
+});
+$('#exp-prod').addEventListener('click',()=>{
+  const rows=[['parametro','valor','unidade'],
+    ['producao_liquida_estimada',fmt(dailyProd(),2),'t/dia'],
+    ['refugo_previsto',fmt(scrapPct(),2),'%'],
+    ['oee',(oee()*100).toFixed(1),'%'],
+    ['disponibilidade',(availability()*100).toFixed(1),'%'],
+    ['desempenho',(performanceIdx()*100).toFixed(1),'%'],
+    ['qualidade',(quality()*100).toFixed(1),'%'],
+    ['desgaste_roletes_aliancas',(wearIndex()*100).toFixed(1),'%'],
+    ['fadiga_termica_refratario',(thermalStressIdx()*100).toFixed(1),'%'],
+    ['vida_util_refratario',refractoryLifePct().toFixed(1),'%'],
+    ['temp_estimada_mancais',bearingTempEst().toFixed(0),'°C'],
+    ['proxima_manutencao',daysToMaint(),'dias'],
+    ['passeio_axial_atual',fmt(K.walkMM||0,1),'mm'],
+    ['limite_passeio_axial',WALK_LIMIT_MM,'mm'],
+    ['empuxo_axial',fmt(axialThrust()/9.81,0),'kgf']];
+  dl('producao-manutencao-sacramento.csv','text/csv',rows.map(r=>r.join(';')).join('\n'));
+});
+$('#exp-curve').addEventListener('click',()=>{
+  const g=GR[P.grade], rows=[['posicao_relativa_0a1','temperatura_C']];
+  for(let i=0;i<=40;i++){ const t=i/40, T=Tpeak()*(0.35+0.65*Math.sin(Math.PI*Math.min(t*1.4,1))); rows.push([t.toFixed(3),Math.max(60,T).toFixed(0)]); }
+  dl('curva-de-queima-sacramento.csv','text/csv',rows.map(r=>r.join(';')).join('\n'));
+});
+
+/* ---- exportação multi-formato: planilha Excel, relatório e fichas de manutenção ---- */
+function nowStr(){ const d=new Date(); return d.toLocaleString('pt-BR'); }
+function xlsTable(title,headerRows,bodyRowsArr){
+  let html='<h3 style="font-family:Calibri,Arial">'+title+'</h3><table border="1" cellspacing="0" cellpadding="3">';
+  headerRows.forEach(hr=>{ html+='<tr>'+hr.map(c=>'<th style="background:#1c2733;color:#fff">'+c+'</th>').join('')+'</tr>'; });
+  bodyRowsArr.forEach(r=>{ html+='<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>'; });
+  html+='</table><br>';
+  return html;
+}
+$('#exp-xls').addEventListener('click',()=>{
+  const g=GR[P.grade];
+  const dados=xlsTable('Produção / Manutenção / Mancais — Unidade Sacramento',
+    [['Parâmetro','Valor','Unidade']],
+    [['Produção líquida estimada',fmt(dailyProd(),2),'t/dia'],
+     ['Refugo previsto',fmt(scrapPct(),2),'%'],
+     ['OEE',(oee()*100).toFixed(1),'%'],
+     ['Disponibilidade',(availability()*100).toFixed(1),'%'],
+     ['Desempenho',(performanceIdx()*100).toFixed(1),'%'],
+     ['Qualidade',(quality()*100).toFixed(1),'%'],
+     ['Desgaste roletes/alianças',(wearIndex()*100).toFixed(1),'%'],
+     ['Fadiga térmica refratário',(thermalStressIdx()*100).toFixed(1),'%'],
+     ['Vida útil refratário',refractoryLifePct().toFixed(1),'%'],
+     ['Temp. estimada mancais',bearingTempEst().toFixed(0),'°C'],
+     ['Próxima manutenção',daysToMaint(),'dias'],
+     ['Passeio axial atual',fmt(K.walkMM||0,1),'mm'],
+     ['Limite de passeio axial',WALK_LIMIT_MM,'mm'],
+     ['Empuxo axial',fmt(axialThrust()/9.81,0),'kgf']]);
+  const config=xlsTable('Configuração do forno',
+    [['Parâmetro','Valor']],
+    [['Grau/material',g.name],['Temp. set-point (°C)',P.Tset],['Inclinação (%)',P.incline],['Rotação (rpm)',P.rpm],
+     ['Tiragem (%)',P.draft],['Alimentação (t/h)',P.feed],['Comprimento (m)',P.L],['Diâmetro (m)',P.D],
+     ['Diâmetro aliança/tyre (m)',P.tyreD],['Diâmetro rolete (m)',P.rollerD],['Largura rolete (m)',P.rollerL],
+     ['Peso do forno (t)',P.kilnWeightT]]);
+  const curvaRows=[]; for(let i=0;i<=40;i++){ const t=i/40, T=Tpeak()*(0.35+0.65*Math.sin(Math.PI*Math.min(t*1.4,1))); curvaRows.push([t.toFixed(3),Math.max(60,T).toFixed(0)]); }
+  const curva=xlsTable('Curva de queima',[['Posição relativa (0–1)','Temperatura (°C)']],curvaRows);
+  const html='<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">'
+    +'<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Resumo</x:Name>'
+    +'<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'
+    +'<style>table{border-collapse:collapse;font-family:Calibri,Arial;font-size:12px}td,th{padding:4px 8px}</style></head>'
+    +'<body><p style="font-family:Calibri,Arial"><b>Relatório de planilha — Forno Rotativo Sacramento</b><br>Gerado em '+nowStr()+'</p>'
+    +dados+config+curva+'</body></html>';
+  dl('planilha-completa-sacramento.xls','application/vnd.ms-excel',html);
+});
+function reportSections(){
+  const g=GR[P.grade];
+  return `
+  <h2>Resumo operacional</h2>
+  <table>
+    <tr><td>Produção líquida estimada</td><td>${fmt(dailyProd(),2)} t/dia</td></tr>
+    <tr><td>Refugo previsto</td><td>${fmt(scrapPct(),2)} %</td></tr>
+    <tr><td>OEE</td><td>${(oee()*100).toFixed(1)} %</td></tr>
+    <tr><td>Disponibilidade</td><td>${(availability()*100).toFixed(1)} %</td></tr>
+    <tr><td>Desempenho</td><td>${(performanceIdx()*100).toFixed(1)} %</td></tr>
+    <tr><td>Qualidade</td><td>${(quality()*100).toFixed(1)} %</td></tr>
+    <tr><td>Grau/material em processo</td><td>${g.name}</td></tr>
+  </table>
+  <h2>Configuração do forno</h2>
+  <table>
+    <tr><td>Comprimento</td><td>${P.L} m</td></tr>
+    <tr><td>Diâmetro</td><td>${P.D} m</td></tr>
+    <tr><td>Temp. set-point</td><td>${P.Tset} °C</td></tr>
+    <tr><td>Inclinação</td><td>${P.incline} %</td></tr>
+    <tr><td>Rotação</td><td>${P.rpm} rpm</td></tr>
+    <tr><td>Alimentação</td><td>${P.feed} t/h</td></tr>
+    <tr><td>Peso do forno</td><td>${P.kilnWeightT} t</td></tr>
+  </table>
+  <h2>Manutenção e desgaste</h2>
+  <table>
+    <tr><td>Desgaste roletes/alianças</td><td>${(wearIndex()*100).toFixed(1)} %</td></tr>
+    <tr><td>Fadiga térmica do refratário</td><td>${(thermalStressIdx()*100).toFixed(1)} %</td></tr>
+    <tr><td>Vida útil do refratário</td><td>${refractoryLifePct().toFixed(1)} %</td></tr>
+    <tr><td>Temperatura estimada dos mancais</td><td>${bearingTempEst().toFixed(0)} °C</td></tr>
+    <tr><td>Próxima manutenção prevista</td><td>${daysToMaint()} dias</td></tr>
+    <tr><td>Passeio axial atual</td><td>${fmt(K.walkMM||0,1)} mm (limite ${WALK_LIMIT_MM} mm)</td></tr>
+    <tr><td>Empuxo axial</td><td>${fmt(axialThrust()/9.81,0)} kgf</td></tr>
+  </table>`;
+}
+function openPrintWindow(title,bodyHtml){
+  const w=window.open('','_blank'); if(!w){ alert('Permita pop-ups para gerar o documento de impressão.'); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px}
+    h1{font-size:20px;border-bottom:2px solid #333;padding-bottom:6px}
+    h2{font-size:15px;margin-top:22px;color:#1c2733}
+    table{border-collapse:collapse;width:100%;margin-bottom:6px}
+    td,th{border:1px solid #999;padding:5px 8px;font-size:12px;text-align:left}
+    .meta{font-size:11px;color:#555;margin-bottom:14px}
+    .ficha{border:1px solid #999;border-radius:6px;padding:10px 14px;margin-bottom:14px;page-break-inside:avoid}
+    .ficha h3{margin:0 0 6px;font-size:14px}
+    .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;color:#fff}
+    @media print{ button{display:none} }
+  </style></head><body>
+  <h1>${title}</h1>
+  <div class="meta">Unidade Sacramento · Forno Rotativo · Gerado em ${nowStr()}</div>
+  ${bodyHtml}
+  <button onclick="window.print()" style="margin-top:16px;padding:8px 16px">🖨 Imprimir / Salvar como PDF</button>
+  </body></html>`);
+  w.document.close();
+}
+$('#exp-report').addEventListener('click',()=>{
+  openPrintWindow('Relatório completo — Forno Rotativo Sacramento',reportSections());
+});
+function fichaTag(pct){
+  const [r,g,b]=heatColor(pct/100);
+  return `<span class="tag" style="background:rgb(${r},${g},${b})">${pct.toFixed(0)}%</span>`;
+}
+function fichasSections(){
+  const w=wearIndex()*100, th=thermalStressIdx()*100, ref=100-refractoryLifePct(), bear=bearingTempEst();
+  const itens=[
+    {nome:'Roletes e Alianças (apoio do forno)',pct:w,acao:w>70?'Inspeção urgente — programar substituição de roletes/alianças desgastados.':w>40?'Monitorar desgaste e lubrificação; planejar reaperto/retífica.':'Condição normal — manter rotina de inspeção.'},
+    {nome:'Refratário (revestimento interno)',pct:ref,acao:ref>70?'Risco elevado — programar reforma do revestimento refratário.':ref>40?'Inspecionar pontos de maior fadiga térmica nas próximas paradas.':'Condição normal — manter monitoramento térmico.'},
+    {nome:'Mancais (rolamentos dos roletes)',pct:clamp((bear-40)/1.6,0,100),acao:bear>110?'Temperatura elevada — verificar lubrificação e alinhamento imediatamente.':bear>85?'Acompanhar tendência de temperatura e lubrificação.':'Condição normal.'},
+    {nome:'Sistema de queima (maçarico/exaustor)',pct:th,acao:th>70?'Verificar regulagem de chama, tiragem e fadiga térmica do refratário.':th>40?'Acompanhar estabilidade térmica do processo.':'Condição normal.'},
+    {nome:'Resfriador rotativo',pct:clamp(th*0.8,0,100),acao:th>60?'Inspecionar troca térmica e desgaste das pás/anéis do resfriador.':'Condição normal.'},
+    {nome:'Passeio axial / empuxo',pct:clamp(((K.walkMM||0)/WALK_LIMIT_MM)*100,0,100),acao:(K.walkMM||0)>WALK_LIMIT_MM*0.7?'Passeio próximo do limite — verificar alinhamento e roletes de encosto.':'Dentro da faixa normal.'}
+  ];
+  return itens.map(it=>`<div class="ficha"><h3>${it.nome} ${fichaTag(it.pct)}</h3>
+    <table><tr><td>Indicador de condição</td><td>${it.pct.toFixed(0)} %</td></tr>
+    <tr><td>Próxima manutenção (geral do forno)</td><td>${daysToMaint()} dias</td></tr>
+    <tr><td>Ação recomendada</td><td>${it.acao}</td></tr></table></div>`).join('');
+}
+$('#exp-fichas').addEventListener('click',()=>{
+  openPrintWindow('Fichas de manutenção — Forno Rotativo Sacramento',fichasSections());
+});
+
 /* ===================================================================
    11. INÍCIO
 =================================================================== */
-buildAll(); resize(); setView('persp'); setSector('kiln'); refreshAnalysis(); refreshIA();
+loadFornoState();
+buildAll(); resize(); setView('persp'); setSector('all'); refreshAnalysis(); refreshIA();
 L0.style.display='none'; requestAnimationFrame(animate);
 })();
 </script>
