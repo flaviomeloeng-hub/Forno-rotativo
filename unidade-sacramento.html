@@ -1338,6 +1338,7 @@ function refreshAnalysis(){
   elQ.style.background=cm[cls]; elS.textContent=`${(q*100).toFixed(0)}% · ${txt}`; elS.style.color=cm[cls];
   elNote.innerHTML='τ por <b>Sullivan, Maier &amp; Ralston (1927)</b>: τ = 1,77·L·√φ /(D·N·S). Janelas de queima e ângulos de repouso são <b>indicativos</b> — calibrar com os dados reais de processo da Togni.';
   colorBed(); drawProfile();
+  saveFornoState();
 }
 
 /* ===================================================================
@@ -1642,19 +1643,46 @@ function showDrawingPreview(f){
 }
 $('#imp-preview-clear').addEventListener('click',clearDrawingPreview);
 $('#imp-btn').addEventListener('click',()=>$('#imp-file').click());
+function applyConfig(cfg){
+  Object.assign(P,cfg.P||{});
+  if(cfg.mancais) P.mancais=cfg.mancais;
+  ['s-T','s-inc','s-rpm','s-dr','s-feed','s-L','s-D','s-tD','s-rD','s-rL','s-kw'].forEach(id=>{
+    const map={'s-T':'Tset','s-inc':'incline','s-rpm':'rpm','s-dr':'draft','s-feed':'feed','s-L':'L','s-D':'D','s-tD':'tyreD','s-rD':'rollerD','s-rL':'rollerL','s-kw':'kilnWeightT'};
+    const k=map[id]; if(P[k]!==undefined && $('#'+id)){ $('#'+id).value=P[k]; }
+  });
+  buildAll(); buildNeedlesUI(); refreshAnalysis(); refreshIA();
+}
+/* ---- persistência automática (localStorage compartilhado com o painel de gestão) ---- */
+const FORNO_LS_KEY='dn2_forno_cfg';
+let _fornoSaveTimer=null;
+function _fornoCfgAtual(){
+  return {P:{Tset:P.Tset,incline:P.incline,rpm:P.rpm,draft:P.draft,feed:P.feed,L:P.L,D:P.D,tyreD:P.tyreD,rollerD:P.rollerD,rollerL:P.rollerL,kilnWeightT:P.kilnWeightT,grade:P.grade},mancais:P.mancais};
+}
+function saveFornoState(){
+  clearTimeout(_fornoSaveTimer);
+  _fornoSaveTimer=setTimeout(()=>{
+    try{
+      localStorage.setItem(FORNO_LS_KEY,JSON.stringify(_fornoCfgAtual()));
+      if(window.parent && window.parent!==window){ window.parent.postMessage({tipo:'dn2-forno-atualizado',ts:Date.now()},'*'); }
+    }catch(e){}
+  },1200);
+}
+function loadFornoState(){
+  try{
+    const raw=localStorage.getItem(FORNO_LS_KEY);
+    if(!raw) return;
+    const cfg=JSON.parse(raw);
+    applyConfig(cfg);
+  }catch(e){}
+}
 $('#imp-file').addEventListener('change',async(e)=>{
   const f=e.target.files[0]; if(!f)return;
   const st=$('#imp-status');
   if(/\.json$/i.test(f.name)){
     try{
       const cfg=JSON.parse(await f.text());
-      Object.assign(P,cfg.P||{});
-      if(cfg.mancais) P.mancais=cfg.mancais;
-      ['s-T','s-inc','s-rpm','s-dr','s-feed','s-L','s-D','s-tD','s-rD','s-rL','s-kw'].forEach(id=>{
-        const map={'s-T':'Tset','s-inc':'incline','s-rpm':'rpm','s-dr':'draft','s-feed':'feed','s-L':'L','s-D':'D','s-tD':'tyreD','s-rD':'rollerD','s-rL':'rollerL','s-kw':'kilnWeightT'};
-        const k=map[id]; if(P[k]!==undefined && $('#'+id)){ $('#'+id).value=P[k]; }
-      });
-      buildAll(); buildNeedlesUI(); refreshAnalysis(); refreshIA();
+      applyConfig(cfg);
+      saveFornoState();
       st.textContent='✔ Configuração "'+f.name+'" importada.';
     }catch(err){ st.textContent='✘ Falha ao importar JSON: '+err.message; }
   } else if(/\.csv$/i.test(f.name)){
@@ -1823,6 +1851,7 @@ $('#exp-fichas').addEventListener('click',()=>{
 /* ===================================================================
    11. INÍCIO
 =================================================================== */
+loadFornoState();
 buildAll(); resize(); setView('persp'); setSector('all'); refreshAnalysis(); refreshIA();
 L0.style.display='none'; requestAnimationFrame(animate);
 })();
