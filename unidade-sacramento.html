@@ -262,6 +262,13 @@
     <input type="file" id="imp-file" accept=".json,.csv,.pdf,.png,.jpg,.jpeg" style="display:none">
     <button class="btn-ghost" id="imp-btn">📂 Importar desenho/dimensões/planilha…</button>
     <div class="hint" id="imp-status"></div>
+    <div id="imp-preview" style="display:none;margin:8px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.03)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:11px;color:var(--dim)">
+        <span id="imp-preview-name">referência</span>
+        <button class="chip" id="imp-preview-clear" style="padding:2px 8px">✕ Remover</button>
+      </div>
+      <div id="imp-preview-body" style="max-height:260px;overflow:auto;text-align:center;background:#0b0e13"></div>
+    </div>
     <button class="btn-ghost" id="exp-config">💾 Exportar configuração do forno (.json)</button>
     <button class="btn-ghost" id="exp-prod">📊 Exportar dados de produção/manutenção (.csv)</button>
     <button class="btn-ghost" id="exp-curve">🔥 Exportar curva de queima (.csv)</button>
@@ -1605,6 +1612,26 @@ function dl(filename,mime,content){
   a.href=URL.createObjectURL(blob); a.download=filename; document.body.appendChild(a); a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},200);
 }
+function clearDrawingPreview(){
+  const box=$('#imp-preview'), body=$('#imp-preview-body');
+  if(body){ const old=body.querySelector('img,embed'); if(old&&old.src&&old.src.startsWith('blob:')) URL.revokeObjectURL(old.src); body.innerHTML=''; }
+  if(box) box.style.display='none';
+}
+function showDrawingPreview(f){
+  const box=$('#imp-preview'), body=$('#imp-preview-body'), name=$('#imp-preview-name');
+  if(!box||!body) return;
+  body.innerHTML=''; name.textContent=f.name;
+  const url=URL.createObjectURL(f);
+  if(/\.pdf$/i.test(f.name)){
+    const emb=document.createElement('embed'); emb.src=url; emb.type='application/pdf'; emb.style.width='100%'; emb.style.height='260px';
+    body.appendChild(emb);
+  } else {
+    const img=document.createElement('img'); img.src=url; img.style.maxWidth='100%'; img.style.display='block'; img.style.margin='0 auto';
+    body.appendChild(img);
+  }
+  box.style.display='block';
+}
+$('#imp-preview-clear').addEventListener('click',clearDrawingPreview);
 $('#imp-btn').addEventListener('click',()=>$('#imp-file').click());
 $('#imp-file').addEventListener('change',async(e)=>{
   const f=e.target.files[0]; if(!f)return;
@@ -1623,8 +1650,11 @@ $('#imp-file').addEventListener('change',async(e)=>{
     }catch(err){ st.textContent='✘ Falha ao importar JSON: '+err.message; }
   } else if(/\.csv$/i.test(f.name)){
     st.textContent='✔ Planilha "'+f.name+'" recebida (referência de controle — exiba/concilie manualmente com os parâmetros do painel).';
+  } else if(/\.(png|jpe?g|pdf)$/i.test(f.name)){
+    showDrawingPreview(f);
+    st.textContent='✔ Desenho "'+f.name+'" exibido abaixo como referência visual (anexo informativo — não altera a geometria simulada).';
   } else {
-    st.textContent='✔ Desenho/arquivo "'+f.name+'" recebido como referência visual (anexo informativo — não altera a geometria simulada).';
+    st.textContent='✔ Arquivo "'+f.name+'" recebido como referência (anexo informativo — não altera a geometria simulada).';
   }
   e.target.value='';
 });
