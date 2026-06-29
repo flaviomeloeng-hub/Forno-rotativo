@@ -422,7 +422,7 @@ let coolerGroup=null, chuteGroup=null;
 // setor de transporte final: elevador de canecas + esteira de distribuição + baias de classificação
 const transportSector=new THREE.Group(); scene.add(transportSector);
 const KE={ buckets:[], pathH:1, pr:0.45 };
-let elevGroup=null, bayGroup=null;
+let elevGroup=null, bayGroup=null, dischStepGrp=null;
 
 /* ===================================================================
    4. CONSTRUÇÃO
@@ -933,6 +933,35 @@ function buildElevatorAndBays(offX,dropY,cL,cR,cHalfX){
   const feedChute=new THREE.Mesh(new THREE.CylinderGeometry(cR*0.3,cR*0.3,len,14,1,true),matSteel(0x6b737c,0.78,0.5));
   feedChute.position.copy(mid); feedChute.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());
   elevGroup.add(feedChute);
+
+  /* ---- boca de descarga do resfriador (saída de material — visível) ---- */
+  const hopperTopR=cR*0.42, hopperBotR=cR*0.16, hopperH=0.55;
+  const hopperMouth=new THREE.Mesh(new THREE.CylinderGeometry(hopperTopR,hopperBotR,hopperH,18,1,true),matSteel(0x70625a,0.7,0.45));
+  hopperMouth.position.set(cDischX,dropY-cR*0.4-hopperH/2,0); elevGroup.add(hopperMouth);
+  const hopperMat=new THREE.MeshStandardMaterial({color:0xff7a1a,emissive:0xb84d12,emissiveIntensity:0.85,roughness:0.85,metalness:0.05});
+  const hopperFlow=new THREE.Mesh(new THREE.ConeGeometry(hopperTopR*0.82,hopperH*0.9,14),hopperMat);
+  hopperFlow.position.set(cDischX,dropY-cR*0.4-hopperH*0.45,0); hopperFlow.rotation.x=Math.PI; KE.hopperFlow=hopperFlow; elevGroup.add(hopperFlow);
+  addLabel('Saída de material · resfriador → elevador',cDischX,dropY-cR*0.4+0.9,1.1,'rgba(255,165,40,0.95)');
+
+  /* ---- degrau/patamar próprio da descarga (mais baixo que o patamar do resfriador,
+     no nível da bota do elevador — distinto do degrau forno→resfriador) ---- */
+  if(dischStepGrp){disp(dischStepGrp);transportSector.remove(dischStepGrp);}
+  dischStepGrp=new THREE.Group(); transportSector.add(dischStepGrp);
+  const platY2=bootY+0.05, riserH2=Math.max(0.4,dropY-platY2), stepRun2=1.3, stepZHalf2=1.5;
+  const dischBoundX=cDischX+0.9;
+  const platDeck=new THREE.Mesh(new THREE.BoxGeometry(2.0,0.12,stepZHalf2*2),matConcrete);
+  platDeck.position.set(dischBoundX+stepRun2+1.0,platY2-0.06,0); platDeck.castShadow=true; platDeck.receiveShadow=true; dischStepGrp.add(platDeck);
+  const riserWall2=new THREE.Mesh(new THREE.BoxGeometry(0.26,riserH2,stepZHalf2*2),matConcrete);
+  riserWall2.position.set(dischBoundX,platY2+riserH2/2,0); riserWall2.castShadow=true; riserWall2.receiveShadow=true; dischStepGrp.add(riserWall2);
+  const nSteps2=Math.max(4,Math.round(riserH2/0.19)); const stepRiser2=riserH2/nSteps2, run2=stepRun2/nSteps2;
+  for(let i=0;i<nSteps2;i++){
+    const sx=dischBoundX+run2*(i+0.5), sy=dropY-stepRiser2*(i+0.5);
+    const st=new THREE.Mesh(new THREE.BoxGeometry(run2*1.02,stepRiser2,stepZHalf2*2*0.9),matConcrete);
+    st.position.set(sx,sy,0); st.castShadow=true; st.receiveShadow=true; dischStepGrp.add(st);
+  }
+  buildGuardrail(dischStepGrp,[[dischBoundX,-stepZHalf2],[dischBoundX,stepZHalf2]],dropY);
+  buildGuardrail(dischStepGrp,[[dischBoundX+stepRun2,-stepZHalf2],[dischBoundX+stepRun2,stepZHalf2]],platY2);
+  addLabel('Patamar da descarga (elevador)',dischBoundX+stepRun2/2,riserH2*0.55+platY2,stepZHalf2+0.5,'rgba(245,165,35,0.9)');
 
   /* ---- esteira de distribuição + 10 baias de classificação ---- */
   bayGroup=new THREE.Group(); transportSector.add(bayGroup);
