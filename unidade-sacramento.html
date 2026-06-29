@@ -256,6 +256,7 @@
       <button class="chip" data-t="shadows">☀︎ Sombras</button>
       <button class="chip" data-t="spin">↻ Girar</button>
       <button class="chip" data-t="heatmap">🌡 Mapa de carga</button>
+      <button class="chip" data-t="axis">⊢ Linha de centro</button>
     </div>
     <div id="heat-legend" class="hint" style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <span style="font-weight:600;color:var(--text2)">Legenda do mapa de carga:</span>
@@ -344,7 +345,7 @@ const THREE=window.THREE;
 const P = {
   grade:'70', Tset:1500, incline:3.0, rpm:2.0, draft:70, feed:8.0,
   L:30, D:2.4, tyreD:2.8, rollerD:1.1, rollerL:0.9,
-  cutaway:true, showMat:true, showFlame:true, showStruct:true, showShell:true, labels:true, shadows:true, spin:true, heatmap:false,
+  cutaway:true, showMat:true, showFlame:true, showStruct:true, showShell:true, labels:true, shadows:true, spin:true, heatmap:false, axis:true,
   kilnWeightT:80, mancais:new Array(12).fill(0)
 };
 // Janelas de queima INDICATIVAS — calibrar com dados reais da Togni
@@ -503,7 +504,7 @@ const feedSector=new THREE.Group(); scene.add(feedSector);
 // setor do resfriador: 2º forno rotativo (menor, mais curto, 2 bases) em trincheira inferior + calha de queda
 const coolerSector=new THREE.Group(); scene.add(coolerSector);
 const coolerTilt=new THREE.Group(); coolerSector.add(coolerTilt);
-const KC={ spin:null, rollers:[] };
+const KC={ spin:null, rollers:[], cascade:null, cascadeData:[], cRin:0, cL:0, axisLine:null };
 let coolerGroup=null, chuteGroup=null;
 // setor de transporte final: elevador de canecas + esteira de distribuição + baias de classificação
 const transportSector=new THREE.Group(); scene.add(transportSector);
@@ -516,7 +517,7 @@ let elevGroup=null, bayGroup=null, dischStepGrp=null;
 const tilt=new THREE.Group(); kilnSector.add(tilt);
 const labelGroup=new THREE.Group(); tilt.add(labelGroup);
 const K={ spin:null, bed:null, nod:null, nodData:[], flame:null, fan:null, rollers:[], pinion:null,
-          tracers:[], clipMeshes:[], labels:[] };
+          tracers:[], clipMeshes:[], labels:[], cascade:null, cascadeData:[], axisLine:null };
 let R=1.2, Rin=0.9, baseXs=[], groundLevel=-3, cRmod=0.6;
 // Trincheira do forno: profundidade indicativa ~2,3 m (aprofunda automaticamente p/ liberar roletes maiores),
 // folga lateral/longitudinal ~2,3 m das estruturas; guarda-corpo NR12 a 1,10 m + travessão intermediário a 0,55 m.
@@ -854,7 +855,7 @@ function buildAll(){
   flame.add(emb); flame.userData.emb=emb;
 
   /* ---- CAPELAS / EXAUSTOR (translúcidas p/ vista de perfil) ---- */
-  const feedX=-L/2, coolX=L/2;
+  const feedX=-L/2, coolX=L/2; K.coolX=coolX;
   const feedHood=new THREE.Mesh(new THREE.BoxGeometry(R*1.8,R*2.5,R*2.5),matCast(0x2c333b,0.4,0.7));
   feedHood.material.transparent=true; feedHood.material.opacity=0.3; feedHood.position.set(feedX-R*0.9,0,0); tilt.add(feedHood);
   const riser=new THREE.Mesh(new THREE.CylinderGeometry(R*0.5,R*0.5,R*3,24),matSteel(0x6b737c,0.8,0.5));
@@ -899,6 +900,24 @@ function buildAll(){
   const trGeo=new THREE.SphereGeometry(Rin*0.13,12,10);
   const trMat=new THREE.MeshStandardMaterial({color:0x54c8e8,emissive:0x2aa6cc,emissiveIntensity:1.4,roughness:0.35});
   for(let i=0;i<10;i++){ const m=new THREE.Mesh(trGeo,trMat); m.visible=false; stat.add(m); K.tracers.push({mesh:m,active:false,t:0,lead:i===0}); }
+
+  /* ---- cascata de material incandescente na saída/descarga (giro do forno tomba o leito) ---- */
+  const NCASC=64, cascGeo=new THREE.BufferGeometry(), cascPos=new Float32Array(NCASC*3);
+  for(let i=0;i<NCASC;i++){
+    cascPos[i*3]=coolX-Rin*0.15-Math.random()*Rin*0.7;
+    cascPos[i*3+1]=Rin*(0.2+Math.random()*0.65);
+    cascPos[i*3+2]=(Math.random()-0.5)*Rin*1.5;
+  }
+  cascGeo.setAttribute('position',new THREE.BufferAttribute(cascPos,3));
+  const cascMat=new THREE.PointsMaterial({color:0xffae42,size:Rin*0.12,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false});
+  const cascade=new THREE.Points(cascGeo,cascMat); stat.add(cascade); K.cascade=cascade;
+  K.cascadeData=[]; for(let i=0;i<NCASC;i++) K.cascadeData.push({vy:0});
+
+  /* ---- linha de centro / eixo geométrico do forno (referência de alinhamento) ---- */
+  const axisGeo=new THREE.BufferGeometry();
+  axisGeo.setFromPoints([new THREE.Vector3(feedX-R*1.4,0,0),new THREE.Vector3(coolX+R*1.4,0,0)]);
+  const axisMat=new THREE.LineDashedMaterial({color:0xff3b30,dashSize:R*0.55,gapSize:R*0.22,linewidth:1,transparent:true,opacity:0.9,depthTest:false});
+  const axisLine=new THREE.Line(axisGeo,axisMat); axisLine.computeLineDistances(); axisLine.renderOrder=999; tilt.add(axisLine); K.axisLine=axisLine;
 
   applyToggles();
   buildCooler();
@@ -960,6 +979,25 @@ function buildCooler(){
   const mot=new THREE.Mesh(new THREE.BoxGeometry(cR*0.9,cR*0.5,cR*0.5),matCast(0x2f363d,0.5,0.6));
   mot.position.set(mX,yC-rollerR-cR*0.3,0); coolerGroup.add(mot);
   addLabel('Motorredutor',mX+offX,yC-rollerR-cR*0.3+cR*0.5+dropY,0,'rgba(255,255,255,0.55)');
+
+  /* ---- cascata de material (já parcialmente resfriado) na saída do resfriador ---- */
+  const NCASC2=48, cCascGeo=new THREE.BufferGeometry(), cCascPos=new Float32Array(NCASC2*3);
+  for(let i=0;i<NCASC2;i++){
+    cCascPos[i*3]=cL/2-cRin*0.15-Math.random()*cRin*0.7;
+    cCascPos[i*3+1]=cRin*(0.2+Math.random()*0.6);
+    cCascPos[i*3+2]=(Math.random()-0.5)*cRin*1.5;
+  }
+  cCascGeo.setAttribute('position',new THREE.BufferAttribute(cCascPos,3));
+  const cCascMat=new THREE.PointsMaterial({color:0xb33a1e,size:cRin*0.13,transparent:true,opacity:0.6,blending:THREE.AdditiveBlending,depthWrite:false});
+  const cCascade=new THREE.Points(cCascGeo,cCascMat); cCascade.visible=P.showMat; coolerGroup.add(cCascade); KC.cascade=cCascade;
+  KC.cascadeData=[]; for(let i=0;i<NCASC2;i++) KC.cascadeData.push({vy:0});
+  KC.cRin=cRin; KC.cL=cL;
+
+  /* ---- linha de centro / eixo geométrico do resfriador (referência de alinhamento) ---- */
+  const cAxisGeo=new THREE.BufferGeometry();
+  cAxisGeo.setFromPoints([new THREE.Vector3(-cL/2-cR*1.4,0,0),new THREE.Vector3(cL/2+cR*1.4,0,0)]);
+  const cAxisMat=new THREE.LineDashedMaterial({color:0xff3b30,dashSize:cR*0.55,gapSize:cR*0.22,linewidth:1,transparent:true,opacity:0.9,depthTest:false});
+  const cAxisLine=new THREE.Line(cAxisGeo,cAxisMat); cAxisLine.computeLineDistances(); cAxisLine.renderOrder=999; coolerTilt.add(cAxisLine); KC.axisLine=cAxisLine;
 
   // piso fabril + trincheira inferior do resfriador (guarda-corpo NR12 + escada)
   const BIG=120;
@@ -1264,10 +1302,12 @@ function enterInterior(sec){
   const Lref=(sec==='kiln')?P.L:Math.max(8,P.L*0.52);
   const Rref=(sec==='kiln')?R:Math.max(0.55,R*0.62);
   const grp=(sec==='kiln')?tilt:coolerTilt;
-  const wp=new THREE.Vector3(-Lref*0.5+Lref*0.32,0,0);
+  // posiciona a câmera próxima da saída/descarga (ponto de queda da cascata incandescente)
+  const wp=new THREE.Vector3(Lref*0.5-Lref*0.16,0,0);
   grp.updateMatrixWorld(true); wp.applyMatrix4(grp.matrixWorld);
   cam.target.copy(wp);
-  cam.tr=Math.max(Rref*1.5,2.2); cam.tθ=1.15; cam.tφ=1.5;
+  cam.tr=(sec==='kiln')?Math.max(Rref*0.7,1.4):Math.max(Rref*0.6,0.45);
+  cam.tθ=1.15+Math.PI; cam.tφ=1.5;
 }
 function sectorBox(obj){
   const box=new THREE.Box3();
@@ -1326,12 +1366,15 @@ canvas.addEventListener('wheel',e=>{e.preventDefault();cam.tr=clamp(cam.tr*(1+e.
 function applyClip(){ const arr=P.cutaway?[clip]:[]; K.clipMeshes.forEach(m=>{if(m.material)m.material.clippingPlanes=arr;}); }
 function applyToggles(){
   if(K.bed)K.bed.visible=P.showMat; if(K.nod)K.nod.visible=P.showMat;
+  if(K.cascade)K.cascade.visible=P.showMat; if(KC.cascade)KC.cascade.visible=P.showMat;
   if(K.flame)K.flame.visible=P.showFlame;
   if(K.rollers[0]&&K.rollers[0].parent)K.rollers[0].parent.visible=P.showStruct;
   if(plantShell)plantShell.visible=P.showShell;
   labelGroup.visible=P.labels;
   if(K.heatKiln)K.heatKiln.visible=P.heatmap;
   if(K.heatCooler)K.heatCooler.visible=P.heatmap;
+  if(K.axisLine)K.axisLine.visible=P.axis;
+  if(KC.axisLine)KC.axisLine.visible=P.axis;
   renderer.shadowMap.enabled=P.shadows; renderer.shadowMap.needsUpdate=true;
   applyClip();
 }
@@ -1435,6 +1478,34 @@ function animate(now){
       const c=heat(h*hS); col.setRGB(c[0],c[1],c[2]); K.nod.setColorAt(i,col);
     }
     K.nod.instanceMatrix.needsUpdate=true; if(K.nod.instanceColor)K.nod.instanceColor.needsUpdate=true;
+  }
+
+  /* ---- cascata incandescente na saída do forno (clínquer tombando pelo giro) ---- */
+  if(P.showMat&&K.cascade){
+    const pa=K.cascade.geometry.attributes.position, hS=clamp(Tpeak()/GR[P.grade].Talvo,0.45,1.12);
+    const c=heat(0.92*hS); K.cascade.material.color.setRGB(c[0],c[1],c[2]);
+    K.cascade.material.opacity=0.7+0.25*Math.sin(t*26);
+    for(let i=0;i<K.cascadeData.length;i++){
+      const pd=K.cascadeData[i]; pd.vy-=2.2*dt;
+      let y=pa.getY(i)+pd.vy*dt;
+      if(y<-Rin*0.85){ y=Rin*(0.2+Math.random()*0.65); pd.vy=0;
+        pa.setX(i,K.coolX-Rin*0.15-Math.random()*Rin*0.7); pa.setZ(i,(Math.random()-0.5)*Rin*1.5); }
+      pa.setY(i,y);
+    }
+    pa.needsUpdate=true;
+  }
+  /* ---- cascata (já resfriada) na saída do resfriador ---- */
+  if(P.showMat&&KC.cascade){
+    const pa=KC.cascade.geometry.attributes.position, cRin2=KC.cRin,cL2=KC.cL;
+    KC.cascade.material.opacity=0.4+0.18*Math.sin(t*18+1.3);
+    for(let i=0;i<KC.cascadeData.length;i++){
+      const pd=KC.cascadeData[i]; pd.vy-=2.2*dt;
+      let y=pa.getY(i)+pd.vy*dt;
+      if(y<-cRin2*0.85){ y=cRin2*(0.2+Math.random()*0.65); pd.vy=0;
+        pa.setX(i,cL2/2-cRin2*0.15-Math.random()*cRin2*0.7); pa.setZ(i,(Math.random()-0.5)*cRin2*1.5); }
+      pa.setY(i,y);
+    }
+    pa.needsUpdate=true;
   }
 
   const drift=(axialSpeed()/P.L)*dt*0.5,half=P.L/2;
