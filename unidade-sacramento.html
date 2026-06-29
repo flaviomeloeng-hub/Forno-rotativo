@@ -272,6 +272,9 @@
     <button class="btn-ghost" id="exp-config">💾 Exportar configuração do forno (.json)</button>
     <button class="btn-ghost" id="exp-prod">📊 Exportar dados de produção/manutenção (.csv)</button>
     <button class="btn-ghost" id="exp-curve">🔥 Exportar curva de queima (.csv)</button>
+    <button class="btn-ghost" id="exp-xls">📈 Exportar planilha completa (Excel)</button>
+    <button class="btn-ghost" id="exp-report">🖨 Relatório completo (imprimir/PDF)</button>
+    <button class="btn-ghost" id="exp-fichas">🛠 Fichas de manutenção (imprimir/PDF)</button>
   </div>
 </div>
 
@@ -1684,6 +1687,131 @@ $('#exp-curve').addEventListener('click',()=>{
   const g=GR[P.grade], rows=[['posicao_relativa_0a1','temperatura_C']];
   for(let i=0;i<=40;i++){ const t=i/40, T=Tpeak()*(0.35+0.65*Math.sin(Math.PI*Math.min(t*1.4,1))); rows.push([t.toFixed(3),Math.max(60,T).toFixed(0)]); }
   dl('curva-de-queima-sacramento.csv','text/csv',rows.map(r=>r.join(';')).join('\n'));
+});
+
+/* ---- exportação multi-formato: planilha Excel, relatório e fichas de manutenção ---- */
+function nowStr(){ const d=new Date(); return d.toLocaleString('pt-BR'); }
+function xlsTable(title,headerRows,bodyRowsArr){
+  let html='<h3 style="font-family:Calibri,Arial">'+title+'</h3><table border="1" cellspacing="0" cellpadding="3">';
+  headerRows.forEach(hr=>{ html+='<tr>'+hr.map(c=>'<th style="background:#1c2733;color:#fff">'+c+'</th>').join('')+'</tr>'; });
+  bodyRowsArr.forEach(r=>{ html+='<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>'; });
+  html+='</table><br>';
+  return html;
+}
+$('#exp-xls').addEventListener('click',()=>{
+  const g=GR[P.grade];
+  const dados=xlsTable('Produção / Manutenção / Mancais — Unidade Sacramento',
+    [['Parâmetro','Valor','Unidade']],
+    [['Produção líquida estimada',fmt(dailyProd(),2),'t/dia'],
+     ['Refugo previsto',fmt(scrapPct(),2),'%'],
+     ['OEE',(oee()*100).toFixed(1),'%'],
+     ['Disponibilidade',(availability()*100).toFixed(1),'%'],
+     ['Desempenho',(performanceIdx()*100).toFixed(1),'%'],
+     ['Qualidade',(quality()*100).toFixed(1),'%'],
+     ['Desgaste roletes/alianças',(wearIndex()*100).toFixed(1),'%'],
+     ['Fadiga térmica refratário',(thermalStressIdx()*100).toFixed(1),'%'],
+     ['Vida útil refratário',refractoryLifePct().toFixed(1),'%'],
+     ['Temp. estimada mancais',bearingTempEst().toFixed(0),'°C'],
+     ['Próxima manutenção',daysToMaint(),'dias'],
+     ['Passeio axial atual',fmt(K.walkMM||0,1),'mm'],
+     ['Limite de passeio axial',WALK_LIMIT_MM,'mm'],
+     ['Empuxo axial',fmt(axialThrust()/9.81,0),'kgf']]);
+  const config=xlsTable('Configuração do forno',
+    [['Parâmetro','Valor']],
+    [['Grau/material',g.name],['Temp. set-point (°C)',P.Tset],['Inclinação (%)',P.incline],['Rotação (rpm)',P.rpm],
+     ['Tiragem (%)',P.draft],['Alimentação (t/h)',P.feed],['Comprimento (m)',P.L],['Diâmetro (m)',P.D],
+     ['Diâmetro aliança/tyre (m)',P.tyreD],['Diâmetro rolete (m)',P.rollerD],['Largura rolete (m)',P.rollerL],
+     ['Peso do forno (t)',P.kilnWeightT]]);
+  const curvaRows=[]; for(let i=0;i<=40;i++){ const t=i/40, T=Tpeak()*(0.35+0.65*Math.sin(Math.PI*Math.min(t*1.4,1))); curvaRows.push([t.toFixed(3),Math.max(60,T).toFixed(0)]); }
+  const curva=xlsTable('Curva de queima',[['Posição relativa (0–1)','Temperatura (°C)']],curvaRows);
+  const html='<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8">'
+    +'<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Resumo</x:Name>'
+    +'<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'
+    +'<style>table{border-collapse:collapse;font-family:Calibri,Arial;font-size:12px}td,th{padding:4px 8px}</style></head>'
+    +'<body><p style="font-family:Calibri,Arial"><b>Relatório de planilha — Forno Rotativo Sacramento</b><br>Gerado em '+nowStr()+'</p>'
+    +dados+config+curva+'</body></html>';
+  dl('planilha-completa-sacramento.xls','application/vnd.ms-excel',html);
+});
+function reportSections(){
+  const g=GR[P.grade];
+  return `
+  <h2>Resumo operacional</h2>
+  <table>
+    <tr><td>Produção líquida estimada</td><td>${fmt(dailyProd(),2)} t/dia</td></tr>
+    <tr><td>Refugo previsto</td><td>${fmt(scrapPct(),2)} %</td></tr>
+    <tr><td>OEE</td><td>${(oee()*100).toFixed(1)} %</td></tr>
+    <tr><td>Disponibilidade</td><td>${(availability()*100).toFixed(1)} %</td></tr>
+    <tr><td>Desempenho</td><td>${(performanceIdx()*100).toFixed(1)} %</td></tr>
+    <tr><td>Qualidade</td><td>${(quality()*100).toFixed(1)} %</td></tr>
+    <tr><td>Grau/material em processo</td><td>${g.name}</td></tr>
+  </table>
+  <h2>Configuração do forno</h2>
+  <table>
+    <tr><td>Comprimento</td><td>${P.L} m</td></tr>
+    <tr><td>Diâmetro</td><td>${P.D} m</td></tr>
+    <tr><td>Temp. set-point</td><td>${P.Tset} °C</td></tr>
+    <tr><td>Inclinação</td><td>${P.incline} %</td></tr>
+    <tr><td>Rotação</td><td>${P.rpm} rpm</td></tr>
+    <tr><td>Alimentação</td><td>${P.feed} t/h</td></tr>
+    <tr><td>Peso do forno</td><td>${P.kilnWeightT} t</td></tr>
+  </table>
+  <h2>Manutenção e desgaste</h2>
+  <table>
+    <tr><td>Desgaste roletes/alianças</td><td>${(wearIndex()*100).toFixed(1)} %</td></tr>
+    <tr><td>Fadiga térmica do refratário</td><td>${(thermalStressIdx()*100).toFixed(1)} %</td></tr>
+    <tr><td>Vida útil do refratário</td><td>${refractoryLifePct().toFixed(1)} %</td></tr>
+    <tr><td>Temperatura estimada dos mancais</td><td>${bearingTempEst().toFixed(0)} °C</td></tr>
+    <tr><td>Próxima manutenção prevista</td><td>${daysToMaint()} dias</td></tr>
+    <tr><td>Passeio axial atual</td><td>${fmt(K.walkMM||0,1)} mm (limite ${WALK_LIMIT_MM} mm)</td></tr>
+    <tr><td>Empuxo axial</td><td>${fmt(axialThrust()/9.81,0)} kgf</td></tr>
+  </table>`;
+}
+function openPrintWindow(title,bodyHtml){
+  const w=window.open('','_blank'); if(!w){ alert('Permita pop-ups para gerar o documento de impressão.'); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px}
+    h1{font-size:20px;border-bottom:2px solid #333;padding-bottom:6px}
+    h2{font-size:15px;margin-top:22px;color:#1c2733}
+    table{border-collapse:collapse;width:100%;margin-bottom:6px}
+    td,th{border:1px solid #999;padding:5px 8px;font-size:12px;text-align:left}
+    .meta{font-size:11px;color:#555;margin-bottom:14px}
+    .ficha{border:1px solid #999;border-radius:6px;padding:10px 14px;margin-bottom:14px;page-break-inside:avoid}
+    .ficha h3{margin:0 0 6px;font-size:14px}
+    .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;color:#fff}
+    @media print{ button{display:none} }
+  </style></head><body>
+  <h1>${title}</h1>
+  <div class="meta">Unidade Sacramento · Forno Rotativo · Gerado em ${nowStr()}</div>
+  ${bodyHtml}
+  <button onclick="window.print()" style="margin-top:16px;padding:8px 16px">🖨 Imprimir / Salvar como PDF</button>
+  </body></html>`);
+  w.document.close();
+}
+$('#exp-report').addEventListener('click',()=>{
+  openPrintWindow('Relatório completo — Forno Rotativo Sacramento',reportSections());
+});
+function fichaTag(pct){
+  const [r,g,b]=heatColor(pct/100);
+  return `<span class="tag" style="background:rgb(${r},${g},${b})">${pct.toFixed(0)}%</span>`;
+}
+function fichasSections(){
+  const w=wearIndex()*100, th=thermalStressIdx()*100, ref=100-refractoryLifePct(), bear=bearingTempEst();
+  const itens=[
+    {nome:'Roletes e Alianças (apoio do forno)',pct:w,acao:w>70?'Inspeção urgente — programar substituição de roletes/alianças desgastados.':w>40?'Monitorar desgaste e lubrificação; planejar reaperto/retífica.':'Condição normal — manter rotina de inspeção.'},
+    {nome:'Refratário (revestimento interno)',pct:ref,acao:ref>70?'Risco elevado — programar reforma do revestimento refratário.':ref>40?'Inspecionar pontos de maior fadiga térmica nas próximas paradas.':'Condição normal — manter monitoramento térmico.'},
+    {nome:'Mancais (rolamentos dos roletes)',pct:clamp((bear-40)/1.6,0,100),acao:bear>110?'Temperatura elevada — verificar lubrificação e alinhamento imediatamente.':bear>85?'Acompanhar tendência de temperatura e lubrificação.':'Condição normal.'},
+    {nome:'Sistema de queima (maçarico/exaustor)',pct:th,acao:th>70?'Verificar regulagem de chama, tiragem e fadiga térmica do refratário.':th>40?'Acompanhar estabilidade térmica do processo.':'Condição normal.'},
+    {nome:'Resfriador rotativo',pct:clamp(th*0.8,0,100),acao:th>60?'Inspecionar troca térmica e desgaste das pás/anéis do resfriador.':'Condição normal.'},
+    {nome:'Passeio axial / empuxo',pct:clamp(((K.walkMM||0)/WALK_LIMIT_MM)*100,0,100),acao:(K.walkMM||0)>WALK_LIMIT_MM*0.7?'Passeio próximo do limite — verificar alinhamento e roletes de encosto.':'Dentro da faixa normal.'}
+  ];
+  return itens.map(it=>`<div class="ficha"><h3>${it.nome} ${fichaTag(it.pct)}</h3>
+    <table><tr><td>Indicador de condição</td><td>${it.pct.toFixed(0)} %</td></tr>
+    <tr><td>Próxima manutenção (geral do forno)</td><td>${daysToMaint()} dias</td></tr>
+    <tr><td>Ação recomendada</td><td>${it.acao}</td></tr></table></div>`).join('');
+}
+$('#exp-fichas').addEventListener('click',()=>{
+  openPrintWindow('Fichas de manutenção — Forno Rotativo Sacramento',fichasSections());
 });
 
 /* ===================================================================
