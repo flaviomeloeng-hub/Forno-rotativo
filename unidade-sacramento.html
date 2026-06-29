@@ -83,6 +83,19 @@
     border-radius:11px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;margin-top:9px}
   .btn-ghost:hover{background:rgba(255,255,255,.1)}
   .loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:50;color:var(--dim);font-size:13px;letter-spacing:.4px}
+  #oval-modal{position:fixed;inset:0;z-index:60;background:rgba(5,8,12,.92);backdrop-filter:blur(6px);display:none;overflow:auto;padding:18px}
+  #oval-modal.open{display:block}
+  #oval-modal .ov-card{background:var(--panel);border:1px solid var(--line);border-radius:15px;max-width:1180px;margin:0 auto;padding:18px}
+  #oval-modal .ov-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  #oval-modal .ov-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  #oval-modal .ov-grid canvas{width:100%;height:220px;display:block;background:rgba(255,255,255,.03);border-radius:10px}
+  #oval-modal .ov-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px}
+  #oval-modal .ov-kpi{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  #oval-modal .ov-kpi b{display:block;font-size:16px;margin-top:2px}
+  #oval-modal .ov-geo{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:rgba(255,255,255,.03);border-radius:10px;padding:10px;margin-bottom:6px}
+  #oval-modal .ov-geo label{font-size:11px;color:var(--dim);display:flex;flex-direction:column;gap:3px}
+  #oval-modal .ov-geo input{width:90px}
+  @media (max-width:900px){ #oval-modal .ov-grid{grid-template-columns:repeat(2,1fr)} }
   @media (max-width:780px){
     #toggle{display:block}
     #panel{transform:translateX(110%);transition:transform .3s ease;width:min(330px,93vw)}
@@ -204,13 +217,14 @@
 
   <div class="sec">
     <h2>Ovalização do casco (polar)</h2>
-    <div class="hint">Deformação radial ilustrativa do casco nas seções de apoio (alianças/roletes) e no resfriador — amplitude exagerada para visualização, escala em mm ao centro de cada gráfico.</div>
+    <div class="hint">A <b>curva</b> de cada gráfico é o contorno do casco visto de frente (360°) na seção indicada; o círculo cinza pontilhado é a referência circular (sem deformação). <b>Onde a curva colore para vermelho</b>, é o ângulo de maior <b>reação de apoio</b> (peso concentrado sobre roletes/alianças naquela seção) — ou seja, onde o casco mais ovaliza/flexiona a cada giro. Amplitude exagerada propositalmente para visualização; escala em mm indicada ao centro de cada gráfico.</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
-      <div style="flex:1;min-width:90px"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Base 3 · entrada</div><canvas id="oval-base1" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
-      <div style="flex:1;min-width:90px"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Base 2 · centro</div><canvas id="oval-base2" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
-      <div style="flex:1;min-width:90px"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Base 1 · maçarico</div><canvas id="oval-base3" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
-      <div style="flex:1;min-width:90px"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Resfriador</div><canvas id="oval-cooler" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
+      <div style="flex:1;min-width:90px;cursor:zoom-in" data-oval-zoom="oval-base1" data-oval-label="Base 3 · entrada"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Base 3 · entrada 🔍</div><canvas id="oval-base1" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
+      <div style="flex:1;min-width:90px;cursor:zoom-in" data-oval-zoom="oval-base2" data-oval-label="Base 2 · centro"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Base 2 · centro 🔍</div><canvas id="oval-base2" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
+      <div style="flex:1;min-width:90px;cursor:zoom-in" data-oval-zoom="oval-base3" data-oval-label="Base 1 · maçarico"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Base 1 · maçarico 🔍</div><canvas id="oval-base3" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
+      <div style="flex:1;min-width:90px;cursor:zoom-in" data-oval-zoom="oval-cooler" data-oval-label="Resfriador"><div style="font-size:10px;color:var(--dim);margin-bottom:3px;text-align:center">Resfriador 🔍</div><canvas id="oval-cooler" width="120" height="120" style="width:100%;height:100px;display:block"></canvas></div>
     </div>
+    <div class="hint" style="margin-top:6px">Clique em qualquer diagrama para abri-lo em tela cheia com todos os KPIs do forno lado a lado.</div>
   </div>
 
   <div class="sec">
@@ -242,6 +256,13 @@
       <button class="chip" data-t="shadows">☀︎ Sombras</button>
       <button class="chip" data-t="spin">↻ Girar</button>
       <button class="chip" data-t="heatmap">🌡 Mapa de carga</button>
+    </div>
+    <div id="heat-legend" class="hint" style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-weight:600;color:var(--text2)">Legenda do mapa de carga:</span>
+      <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:rgb(46,204,113);display:inline-block"></span>baixa reação de apoio / baixa fadiga térmica</span>
+      <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:rgb(245,166,35);display:inline-block"></span>moderada — acompanhar</span>
+      <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:rgb(214,48,49);display:inline-block"></span><b>alta — maior esforço/reação nos pontos de apoio</b> (alianças, roletes, mancais) e/ou maior fadiga térmica do refratário</span>
+      <span style="flex-basis:100%">A faixa <b>vermelha</b> indica onde o casco está submetido à <b>maior reação de apoio</b> (peso do forno + carga do leito de material concentrada sobre roletes/alianças) combinada à fadiga térmica — são os pontos prioritários de inspeção mecânica e refratária.</span>
     </div>
   </div>
 
@@ -275,6 +296,29 @@
     <button class="btn-ghost" id="exp-xls">📈 Exportar planilha completa (Excel)</button>
     <button class="btn-ghost" id="exp-report">🖨 Relatório completo (imprimir/PDF)</button>
     <button class="btn-ghost" id="exp-fichas">🛠 Fichas de manutenção (imprimir/PDF)</button>
+  </div>
+</div>
+
+<div id="oval-modal">
+  <div class="ov-card">
+    <div class="ov-head">
+      <div><h2 style="margin:0">📐 Ovalização do casco — visão em tela cheia</h2>
+        <div class="hint" style="margin:2px 0 0" id="ov-modal-sub">Vermelho = maior reação de apoio (esforço concentrado em roletes/alianças) naquele ângulo de giro.</div></div>
+      <button class="btn-ghost" id="ov-modal-close" style="margin:0;padding:8px 14px">✕ Fechar</button>
+    </div>
+    <div class="ov-geo">
+      <label>Ø externo do casco (m) <input type="number" id="ov-D" min="1.4" max="3.6" step="0.05" value="2.4"></label>
+      <label>Ø pista das alianças (m) <input type="number" id="ov-tD" min="1.6" max="5.2" step="0.05" value="2.8"></label>
+      <label>Comprimento do forno (m) <input type="number" id="ov-L" min="14" max="90" step="1" value="30"></label>
+      <span class="hint" style="flex:1;min-width:160px">Altere os valores para recalcular a ovalização e os KPIs em tempo real — os mesmos parâmetros do painel principal.</span>
+    </div>
+    <div class="ov-grid">
+      <div><div style="font-size:11px;color:var(--dim);margin-bottom:4px;text-align:center">Base 3 · entrada</div><canvas id="ovm-base1"></canvas></div>
+      <div><div style="font-size:11px;color:var(--dim);margin-bottom:4px;text-align:center">Base 2 · centro</div><canvas id="ovm-base2"></canvas></div>
+      <div><div style="font-size:11px;color:var(--dim);margin-bottom:4px;text-align:center">Base 1 · maçarico</div><canvas id="ovm-base3"></canvas></div>
+      <div><div style="font-size:11px;color:var(--dim);margin-bottom:4px;text-align:center">Resfriador</div><canvas id="ovm-cooler"></canvas></div>
+    </div>
+    <div class="ov-kpis" id="ov-kpis"></div>
   </div>
 </div>
 
@@ -1589,7 +1633,42 @@ function drawOvalPolar(id,ampRatio,radiusM){
 function drawOvalization(){
   baseXs.forEach((bx,i)=>drawOvalPolar('oval-base'+(i+1),ovalAmplitude(i,baseXs.length),R));
   drawOvalPolar('oval-cooler',clamp(0.003+wearIndex()*0.01+thermalStressIdx()*0.004,0,0.02),cRmod);
+  if($('#oval-modal').classList.contains('open')) refreshOvalModal();
 }
+/* ---- tela cheia: ovalização + KPIs combinados ---- */
+function refreshOvalModal(){
+  baseXs.forEach((bx,i)=>drawOvalPolar('ovm-base'+(i+1),ovalAmplitude(i,baseXs.length),R));
+  drawOvalPolar('ovm-cooler',clamp(0.003+wearIndex()*0.01+thermalStressIdx()*0.004,0,0.02),cRmod);
+  const kpis=[
+    ['OEE',(oee()*100).toFixed(1)+' %'],
+    ['Qualidade',(quality()*100).toFixed(1)+' %'],
+    ['Produção',fmt(P.feed,1)+' t/h'],
+    ['Desgaste roletes/alianças',(wearIndex()*100).toFixed(1)+' %'],
+    ['Fadiga térmica refratário',(thermalStressIdx()*100).toFixed(1)+' %'],
+    ['Vida útil refratário',refractoryLifePct().toFixed(1)+' %'],
+    ['Temp. estimada mancais',bearingTempEst().toFixed(0)+' °C'],
+    ['Passeio axial',fmt(K.walkMM||0,1)+' / '+WALK_LIMIT_MM+' mm'],
+    ['Próxima manutenção',daysToMaint()+' dias']
+  ];
+  $('#ov-kpis').innerHTML=kpis.map(([k,v])=>`<div class="ov-kpi"><span style="font-size:10px;color:var(--dim)">${k}</span><b>${v}</b></div>`).join('');
+}
+function openOvalModal(){
+  $('#ov-D').value=P.D; $('#ov-tD').value=P.tyreD; $('#ov-L').value=P.L;
+  $('#oval-modal').classList.add('open');
+  refreshOvalModal();
+}
+function closeOvalModal(){ $('#oval-modal').classList.remove('open'); }
+$$('[data-oval-zoom]').forEach(el=>el.addEventListener('click',openOvalModal));
+$('#ov-modal-close').addEventListener('click',closeOvalModal);
+$('#oval-modal').addEventListener('click',e=>{ if(e.target.id==='oval-modal') closeOvalModal(); });
+[['ov-D','D'],['ov-tD','tyreD'],['ov-L','L']].forEach(([id,key])=>{
+  $('#'+id).addEventListener('input',e=>{
+    const v=parseFloat(e.target.value); if(Number.isNaN(v))return;
+    P[key]=v;
+    const slMap={D:'s-D',tyreD:'s-tD',L:'s-L'}; const sl=$('#'+slMap[key]); if(sl) sl.value=v;
+    buildAll(); buildNeedlesUI(); refreshAnalysis(); refreshIA();
+  });
+});
 
 $$('#grades button').forEach(b=>b.addEventListener('click',()=>{$$('#grades button').forEach(x=>x.classList.remove('on'));b.classList.add('on');P.grade=b.dataset.g;refreshAnalysis();refreshCalib();}));
 
