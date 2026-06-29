@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-<title>Forno Rotativo · Togni</title>
+<title>Forno Rotativo · Unidade Sacramento</title>
 <style>
   :root{
     --bg:#090c11; --panel:rgba(14,19,26,.88); --line:rgba(255,255,255,.09);
@@ -94,7 +94,7 @@
 <canvas id="c"></canvas>
 <div class="title">
   <h1>Forno <span class="a">Rotativo</span></h1>
-  <p>Unidade Sacramento → Poços de Caldas · chamote Al₂O₃ · simulação 3D de processo e estrutura</p>
+  <p>Unidade Sacramento · modelo isolado do forno · simulação 3D de processo e estrutura</p>
 </div>
 <button id="toggle" aria-label="Controles">⚙︎</button>
 
@@ -185,12 +185,9 @@
       <button data-view="top">Topo</button>
     </div>
     <div class="sectors" id="sectors">
-      <button data-sec="all" class="on">Planta completa</button>
-      <button data-sec="feed">Alimentação</button>
-      <button data-sec="kiln">Forno</button>
-      <button data-sec="cooler">Resfriador</button>
-      <button data-sec="transport">Elevador+Baias</button>
+      <button data-sec="kiln" class="on">Forno (Sacramento)</button>
     </div>
+    <div class="hint">Modelo isolado do forno rotativo — Unidade Sacramento. Para a planta completa (alimentação, resfriador, elevador e baias), use o arquivo <b>forno-chamote-3d.html</b>.</div>
     <div class="chips" id="chips">
       <button class="chip" data-t="cutaway">✂︎ Corte</button>
       <button class="chip" data-t="showMat">⛏ Material</button>
@@ -1219,7 +1216,7 @@ $('#toggle').addEventListener('click',()=>$('#panel').classList.toggle('open'));
 /* ===================================================================
    11. INÍCIO
 =================================================================== */
-buildAll(); resize(); setView('persp'); setSector('all'); refreshAnalysis(); refreshIA();
+buildAll(); resize(); setView('persp'); setSector('kiln'); refreshAnalysis(); refreshIA();
 L0.style.display='none'; requestAnimationFrame(animate);
 })();
 </script>
